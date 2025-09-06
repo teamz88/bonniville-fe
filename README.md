@@ -1,6 +1,6 @@
-# Bonniville Frontend
+# Bonneville Frontend
 
-A modern React application built with TypeScript, Vite, and Tailwind CSS for the Bonniville platform.
+A modern React application built with TypeScript, Vite, and Tailwind CSS for the Bonneville platform.
 
 ## 🚀 Features
 
@@ -34,7 +34,7 @@ A modern React application built with TypeScript, Vite, and Tailwind CSS for the
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd bonniville/frontend
+   cd Bonneville/frontend
    ```
 
 2. **Install dependencies**

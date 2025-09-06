@@ -44,7 +44,7 @@ const TypingIndicator: React.FC = () => {
     <div className="flex justify-start">
       <div className="flex items-start gap-3 w-full max-w-4xl">
         <div className="w-10 h-10 rounded-full bg-black overflow-hidden flex items-center justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
-          <img src="/bon_fav.png" alt="bonniville" className="w-8 h-8" />
+          <img src="/bon_fav.png" alt="Bonneville" className="w-8 h-8" />
         </div>
         <div className="rounded-xl px-5 py-4 shadow-sm bg-gray-100 text-gray-900 max-w-3xl">
           <div className="flex items-center space-x-1">
@@ -888,7 +888,7 @@ const Chat: React.FC = () => {
                     }`}>
                       {message.message_type === 'assistant' && (
                         <div className="w-10 h-10 rounded-full bg-white flex items-center overflow-hidden justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
-                          <img src="/bon_fav.png" alt="bonniville" className="w-8 h-8" />
+                          <img src="/bon_fav.png" alt="Bonneville" className="w-8 h-8" />
                         </div>
                       )}
                       <div

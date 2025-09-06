@@ -175,7 +175,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ userId }) => {
   return (
     <div className="flex-1 p-5">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">
-        {userId ? `Bonniville - ${user_info.full_name || user_info.username}` : 'Profile'}
+        {userId ? `Bonneville - ${user_info.full_name || user_info.username}` : 'Profile'}
       </h1>
 
       {/* User Profile Section */}

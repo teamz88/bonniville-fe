@@ -44,7 +44,7 @@ const TypingIndicator: React.FC = () => {
     <div className="flex justify-start">
       <div className="flex items-start gap-3 w-full max-w-4xl">
         <div className="w-10 h-10 rounded-full bg-black overflow-hidden flex items-center justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
-          <img src="/bolt_fav.png" alt="bolt" className="w-8 h-8" />
+          <img src="/bon_fav.png" alt="bonniville" className="w-8 h-8" />
         </div>
         <div className="rounded-xl px-5 py-4 shadow-sm bg-gray-100 text-gray-900 max-w-3xl">
           <div className="flex items-center space-x-1">
@@ -349,7 +349,17 @@ const Chat: React.FC = () => {
                     });
                   }
                 } else if (data.type === 'error') {
-                  throw new Error(data.error || data.response);
+                  // Handle error by updating the assistant message with error content
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === tempAssistantMessage.id 
+                      ? { 
+                          ...msg, 
+                          content: data.response || "I apologize, but I'm having trouble connecting to the knowledge base. Please try again later.",
+                          updated_at: new Date().toISOString() 
+                        }
+                      : msg
+                  ));
+                  return; // Exit the streaming loop
                 } else {
                   // Handle unknown event types gracefully
                 }
@@ -364,9 +374,16 @@ const Chat: React.FC = () => {
       }
     } catch (error) {
       console.error('Streaming error:', error);
-      // Remove temp assistant message on error
-      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-assistant-')));
-      throw error;
+      // Update any temp assistant message with error message instead of removing it
+      setMessages(prev => prev.map(msg => 
+        msg.id.startsWith('temp-assistant-') 
+          ? { 
+              ...msg, 
+              content: "I apologize, but I'm having trouble connecting to the knowledge base. Please try again later.",
+              updated_at: new Date().toISOString() 
+            }
+          : msg
+      ));
     }
   };
 
@@ -399,10 +416,7 @@ const Chat: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Remove temp message on error if it was added
-      if (selectedConversation) {
-        setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
-      }
+      // streamResponse now handles errors internally, so no need to remove messages
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -873,8 +887,8 @@ const Chat: React.FC = () => {
                       message.message_type === 'user' ? 'flex-row-reverse' : 'flex-row'
                     }`}>
                       {message.message_type === 'assistant' && (
-                        <div className="w-10 h-10 rounded-full bg-black flex items-center overflow-hidden justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
-                          <img src="/bolt_fav.png" alt="bolt" className="w-8 h-8" />
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center overflow-hidden justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
+                          <img src="/bon_fav.png" alt="bonniville" className="w-8 h-8" />
                         </div>
                       )}
                       <div
@@ -989,8 +1003,8 @@ const Chat: React.FC = () => {
                         )}
                       </div>
                       {message.message_type === 'user' && (
-                        <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white text-base font-medium flex-shrink-0">
-                          <User2Icon/>
+                        <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white text-base font-medium flex-shrink-0 shadow-md">
+                          <User2Icon className="w-5 h-5"/>
                         </div>
                       )}
                     </div>
@@ -1135,7 +1149,7 @@ const Chat: React.FC = () => {
             {/* ChatGPT-like start screen */}
             <div className="w-full max-w-2xl mx-auto">
               <div className="text-center mb-8">
-                <img src='/bolt_fav.png' alt='logo' className='w-20 h-20 mx-auto rounded-2xl mb-5'/>
+                <img src='/bon_fav.png' alt='logo' className='w-20 h-20 mx-auto rounded-2xl mb-5'/>
                 <h1 className="text-3xl font-semibold text-gray-800 mb-2">Hi, {user?.first_name ? user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1).toLowerCase() : 'there'}! Here to help you grow. How can I help?</h1>
                 <p className="text-gray-600">Start a conversation below</p>
               </div>

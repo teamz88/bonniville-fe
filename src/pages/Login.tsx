@@ -57,8 +57,8 @@ const Login: React.FC = () => {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo/Brand section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center overflow-hidden bg-black rounded-xl mb-4 shadow-lg">
-            <img src='/bolt.webp' alt='logo' className='w-full h-16'/>
+          <div className="inline-flex items-center justify-center overflow-hidden bg-white rounded-xl mb-4 shadow-lg">
+            <img src='/bon.png' alt='logo' className='w-full h-16'/>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">
             Welcome Back

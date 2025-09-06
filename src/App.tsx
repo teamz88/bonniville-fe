@@ -34,39 +34,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCheckingClientInfo, setIsCheckingClientInfo] = useState(true)
 
   useEffect(() => {
-    const checkClientInfo = async () => {
-      if (user) {
-        try {
-          // Skip company info modal for admin users
-          if (user.role === 'admin') {
-            setIsCheckingClientInfo(false)
-            return
-          }
-
-          // Check if user has skipped the modal in this session
-          const hasSkippedModal = sessionStorage.getItem(`client_info_skipped_${user.id}`)
-          
-          if (hasSkippedModal) {
-            setIsCheckingClientInfo(false)
-            return
-          }
-
-          const status = await checkClientInfoStatus()
-          // Show modal only if user doesn't have client info or it's not completed
-          if (!status.has_client_info || !status.is_completed) {
-            setShowClientInfoModal(true)
-          }
-        } catch (error) {
-          console.error('Error checking client info status:', error)
-        } finally {
-          setIsCheckingClientInfo(false)
-        }
-      } else {
-        setIsCheckingClientInfo(false)
-      }
-    }
-
-    checkClientInfo()
+    // Hide company info modal for everyone
+    setIsCheckingClientInfo(false)
   }, [user, checkClientInfoStatus])
 
   const handleClientInfoComplete = () => {

@@ -1,6 +1,6 @@
-# Bolt Frontend
+# Bonniville Frontend
 
-A modern React application built with TypeScript, Vite, and Tailwind CSS for the Bolt platform.
+A modern React application built with TypeScript, Vite, and Tailwind CSS for the Bonniville platform.
 
 ## 🚀 Features
 
@@ -34,7 +34,7 @@ A modern React application built with TypeScript, Vite, and Tailwind CSS for the
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd bolt/frontend
+   cd bonniville/frontend
    ```
 
 2. **Install dependencies**

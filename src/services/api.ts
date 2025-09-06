@@ -20,7 +20,7 @@ import { SendMessageRequest } from '../types/chat';
 import { FileUploadRequest } from '../types/files';
 
 const api = axios.create({
-  baseURL: (import.meta as any).env.VITE_API_BASE_URL || 'https://backend.junkgpt.com/api',
+  baseURL: (import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -29,7 +29,7 @@ const api = axios.create({
 
 // Create a separate axios instance for chat operations with longer timeout
 const chatApi_instance = axios.create({
-  baseURL: (import.meta as any).env.VITE_API_BASE_URL || 'https://backend.junkgpt.com/api',
+  baseURL: (import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api',
   timeout: 60000, // 60 seconds for chat operations
   headers: {
     'Content-Type': 'application/json',

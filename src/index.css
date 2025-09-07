@@ -3,7 +3,7 @@
 /* Yangi rang sxemasi - Custom CSS Variables */
 :root {
   /* Asosiy ranglar - Main Colors */
-  --main-yellow: #FEC600;
+  --main-yellow: #26756b;
   --main-black: #030200;
   --main-orange: #2A2A2A; /* #030200 ning ochiqroq versiyasi */
   
@@ -12,7 +12,7 @@
   --accent-blue: #4A4A4A; /* #030200 ning ochiqroq versiyasi */
   
   /* Primary Colors - Sariq asosiy rang */
-  --primary: #FEC600;
+  --primary: #26756b;
   --primary-50: #FFFBEB;
   --primary-100: #FEF3C7;
   --primary-200: #FDE68A;

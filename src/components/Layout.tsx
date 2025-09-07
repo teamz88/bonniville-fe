@@ -310,7 +310,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <h1 className={`font-semibold truncate flex items-center justify-center gap-2 ${
           isMobile ? 'text-xl font-bold' : 'text-lg'
           }`} style={{ color: 'var(--sidebar-text)' }}>
-          <img src='/bon.png' alt='logo' className='w-full h-14' />
+          <img src='/bon.png' alt='logo' className='w-auto h-[50px]' />
         </h1>
         {isMobile && (
           <button
@@ -330,7 +330,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg transition-colors shadow-lg"
             style={{ 
               backgroundColor: 'var(--main-yellow)', 
-              color: 'var(--main-black)' 
+              color: '#fff' 
             }}
           >
             <PlusIcon className="h-5 w-5 mr-2" />

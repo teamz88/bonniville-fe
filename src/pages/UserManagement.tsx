@@ -122,7 +122,7 @@ const UserManagement: React.FC = () => {
                 placeholder="Search users..."
               />
             </div>
-            <div className="flex flex-col">
+            {/* <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700 mb-1">Subscription Status</label>
               <select
                 value={filters.subscription_status}
@@ -149,7 +149,7 @@ const UserManagement: React.FC = () => {
                 <option value="premium">Premium</option>
                 <option value="lifetime">Lifetime</option>
               </select>
-            </div>
+            </div> */}
           </div>
 
           {loading ? (
@@ -170,12 +170,6 @@ const UserManagement: React.FC = () => {
                       <tr>
                         <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
                           User
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subscription
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                          Revenue
                         </th>
                         <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                           Joined
@@ -201,45 +195,6 @@ const UserManagement: React.FC = () => {
                                    {user.email || 'No email provided'}
                                  </div>
                                </div>
-                             </div>
-                           </td>
-                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                             <div>
-                               <div className="text-sm text-gray-900 capitalize">
-                                 {user.subscription_type || 'Free'} Plan
-                               </div>
-                               <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0">
-                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
-                                   user.subscription_status?.toLowerCase() === 'active' ? 'bg-success-100 text-success-800' :
-                                   user.subscription_status?.toLowerCase() === 'expired' ? 'bg-error-100 text-error-800' :
-                                   user.subscription_status?.toLowerCase() === 'cancelled' ? 'bg-accent-100 text-accent-800' :
-                                   user.subscription_status?.toLowerCase() === 'pending' ? 'bg-primary-100 text-primary-800' :
-                                   'bg-secondary-100 text-secondary-800'
-                                 }`}>
-                                   {user.subscription_status || 'Unknown'}
-                                 </span>
-                                 {user.days_until_expiry !== null && user.days_until_expiry !== undefined && (
-                                   <span className="text-xs text-gray-500">
-                                     {user.days_until_expiry > 0 
-                                       ? `${user.days_until_expiry}d left`
-                                       : 'Expired'
-                                     }
-                                   </span>
-                                 )}
-                               </div>
-                               {/* Mobile-only additional info */}
-                               <div className="md:hidden mt-2 text-xs text-gray-500 space-y-1">
-                                 <div>Revenue: {formatCurrency(user.total_revenue || 0)}</div>
-                                 <div>Joined: {dayjs(user.date_joined).format('MMM DD, YYYY')}</div>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                             <div className="text-sm text-gray-900">
-                               {formatCurrency(user.total_revenue || 0)}
-                             </div>
-                             <div className="text-sm text-gray-500">
-                               {user.total_payments || 0} payments
                              </div>
                            </td>
                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">

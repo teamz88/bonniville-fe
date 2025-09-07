@@ -341,7 +341,7 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                {/* <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     id="email_notifications"
@@ -353,7 +353,7 @@ const Profile: React.FC = () => {
                   <Label htmlFor="email_notifications" className="text-sm">
                     Receive email notifications
                   </Label>
-                </div>
+                </div> */}
                 
                 <Button 
                   type="submit" 
@@ -549,16 +549,8 @@ const Profile: React.FC = () => {
                   <p className="text-gray-900 capitalize">{profileData.role}</p>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-500">Subscription:</span>
-                  <p className="text-gray-900 capitalize">{profileData.subscription_type}</p>
-                </div>
-                <div>
                   <span className="font-medium text-gray-500">Member Since:</span>
                   <p className="text-gray-900">{new Date(profileData.date_joined).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-500">Last Login:</span>
-                  <p className="text-gray-900">{new Date(profileData.last_login).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Status:</span>

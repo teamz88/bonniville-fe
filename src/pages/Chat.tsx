@@ -975,7 +975,7 @@ const Chat: React.FC = () => {
                                             onClick={() => {
                                               // Create a download link for the source document
                                               const link = document.createElement('a');
-                                              link.href = `https://rag.junkgpt.com/download/${source}`;
+                                              link.href = `https://bonnevillerag.omadligrouphq.com/download/${source}`;
                                               link.target = '_blank';
                                               link.click();
                                             }}

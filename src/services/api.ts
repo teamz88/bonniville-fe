@@ -207,6 +207,15 @@ export const authApi = {
     new_password_confirm: string;
   }) => api.post('/auth/change-password/', data),
 
+  forgotPassword: (data: { email: string }) =>
+    api.post('/auth/forgot-password/', data),
+
+  resetPassword: (data: {
+    token: string;
+    new_password: string;
+    new_password_confirm: string;
+  }) => api.post('/auth/reset-password/', data),
+
   // Client Info endpoints
   getClientInfo: () => api.get('/auth/client-info/'),
   updateClientInfo: (data: any) => api.patch('/auth/client-info/', data),

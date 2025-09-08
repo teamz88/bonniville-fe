@@ -88,14 +88,14 @@ const Login: React.FC = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                  Username
+                  Username or Email
                 </Label>
                 <div className="relative group">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Enter your username"
+                    placeholder="Enter your username or email"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="pl-11 h-12 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-gray-900"
@@ -131,9 +131,9 @@ const Login: React.FC = () => {
 
               {/* Forgot password link */}
               <div className="text-right">
-                <a href="#" className="text-sm text-primary hover:text-primary-700 transition-colors">
+                <Link to="/forgot-password" className="text-sm text-primary hover:text-primary-700 transition-colors">
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </CardContent>
 

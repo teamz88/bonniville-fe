@@ -71,8 +71,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const activeConversationId = searchParams.get('conversation');
 
   const folderColors = [
-    '#030200', '#1A1A1A', '#2A2A2A', '#3A3A3A', '#4A4A4A',
-    '#5A5A5A', '#6A6A6A', '#7A7A7A', '#8A8A8A', '#9A9A9A'
+    '#6B7280', '#EF4444', '#F97316', '#EAB308', '#22C55E',
+    '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899', '#F43F5E'
   ];
 
   React.useEffect(() => {

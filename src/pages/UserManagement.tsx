@@ -205,13 +205,6 @@ const UserManagement: React.FC = () => {
                            </td>
                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                              <div className="flex items-center justify-center space-x-2">
-                               <button
-                                 onClick={() => handleShowCompanyInfo(user)}
-                                 className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50"
-                                 title="View company info"
-                               >
-                                 <Building className="w-4 h-4" />
-                               </button>
                                {user.role !== 'admin' && (
                                  <button
                                    onClick={() => handleDeleteUser(user)}

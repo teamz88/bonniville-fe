@@ -278,7 +278,7 @@ const Files: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!loading && files.length === 0 && (
+      {!loading && (
         <div className="mx-3 sm:mx-6 mb-5 bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <File className="w-8 h-8 text-gray-400" />

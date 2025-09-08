@@ -1150,7 +1150,7 @@ const Chat: React.FC = () => {
             <div className="w-full max-w-2xl mx-auto">
               <div className="text-center mb-8">
                 <img src='/bon_fav.png' alt='logo' className='w-20 h-20 mx-auto rounded-2xl mb-5'/>
-                <h1 className="text-3xl font-semibold text-gray-800 mb-2">Hi, {user?.first_name ? user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1).toLowerCase() : 'there'}! How can i help you?</h1>
+                <h1 className="text-3xl font-semibold text-gray-800 mb-2">Hi, {user?.first_name ? user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1).toLowerCase() : 'there'}! How can I help you?</h1>
               </div>
               
               {/* Centered input */}

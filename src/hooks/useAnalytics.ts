@@ -236,3 +236,18 @@ export const useUsersListStats = (params?: {
     refetchInterval: 120000, // Refetch every 2 minutes
   });
 };
+
+export const useRegularUsersListStats = (params?: {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  subscription_status?: string;
+  subscription_type?: string;
+}) => {
+  return useQuery({
+    queryKey: ['regularUsersListStats', params],
+    queryFn: () => analyticsApi.getRegularUsersListStats(params),
+    select: (data) => data.data,
+    refetchInterval: 120000, // Refetch every 2 minutes
+  });
+};

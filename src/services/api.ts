@@ -180,6 +180,16 @@ export const authApi = {
     ordering?: string;
   }) => api.get('/auth/users/', { params }),
 
+  // Get regular users only (role='user')
+  getRegularUsers: (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    subscription_status?: string;
+    subscription_type?: string;
+    ordering?: string;
+  }) => api.get('/auth/users/regular/', { params }),
+
   getUser: (id: number) =>
     api.get(`/auth/users/${id}/`),
 
@@ -331,6 +341,19 @@ export const analyticsApi = {
     subscription_type?: string;
     role?: string;
   }) => api.get<UsersListStats>('/analytics/users-list-stats/', { params }),
+
+  // Get regular users list stats (role='user' only)
+  getRegularUsersListStats: (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    subscription_status?: string;
+    subscription_type?: string;
+  }) => {
+    // Add role='user' to params
+    const regularUsersParams = { ...params, role: 'user' };
+    return api.get<UsersListStats>('/analytics/users-list-stats/', { params: regularUsersParams });
+  },
 };
 
 

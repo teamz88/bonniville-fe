@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, ChevronLeft, ChevronRight, Loader2, AlertCircle, Users, Trash2, Eye, Edit, Building } from 'lucide-react';
 import dayjs from 'dayjs';
-import { useUsersListStats } from '../hooks/useAnalytics';
+import { useRegularUsersListStats } from '../hooks/useAnalytics';
 import { UserListItem } from '../types/analytics';
 import { authApi } from '../services/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,11 +28,12 @@ const UserManagement: React.FC = () => {
   });
 
   const queryClient = useQueryClient();
-  const { data: usersData, isLoading: loading, error } = useUsersListStats({
+  const { data: usersData, isLoading: loading, error } = useRegularUsersListStats({
     page: page + 1,
     page_size: pageSize,
     search: search,
-    ...filters,
+    subscription_status: filters.subscription_status,
+    subscription_type: filters.subscription_type,
   });
 
   const deleteUserMutation = useMutation({

@@ -427,11 +427,27 @@ export const chatApi = {
 
 // Files API
 export const filesApi = {
-  // File management
-  uploadFile: (formData: FormData, config?: any) => api.post('/files/upload/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    ...config
-  }),
+  // Files API
+  uploadFile: (formData: FormData, config?: any) => {
+    // Create a separate axios instance for file uploads with longer timeout
+    const uploadApi = axios.create({
+      baseURL: (import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api',
+      timeout: 300000, // 5 minutes for file uploads
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    // Add auth token
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      uploadApi.defaults.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return uploadApi.post('/files/upload/', formData, {
+      ...config
+    });
+  },
   getFiles: (params?: { page?: number; search?: string; category?: string }) =>
     api.get('/files/', { params }),
   getFile: (id: string) => api.get(`/files/${id}/`),

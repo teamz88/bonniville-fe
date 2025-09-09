@@ -62,36 +62,51 @@ const Files: React.FC = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('name', file.name);
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     try {
       setLoading(true);
       setUploadProgress(0);
       
-      await filesApi.uploadFile(formData, {
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
-          );
-          setUploadProgress(progress);
-        }
-      });
+      const totalFiles = files.length;
+      let completedFiles = 0;
+      
+      // Upload files sequentially to avoid overwhelming the server
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('name', file.name);
+        
+        await filesApi.uploadFile(formData, {
+          onUploadProgress: (progressEvent) => {
+            const fileProgress = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent.total || 1)
+            );
+            // Calculate overall progress
+            const overallProgress = Math.round(
+              ((completedFiles * 100) + fileProgress) / totalFiles
+            );
+            setUploadProgress(overallProgress);
+          }
+        });
+        
+        completedFiles++;
+      }
       
       setUploadDialog(false);
       await loadFiles();
       await loadStats();
       setError(null);
     } catch (error) {
-      console.error('Failed to upload file:', error);
-      setError('Failed to upload file');
+      console.error('Failed to upload files:', error);
+      setError('Failed to upload files');
     } finally {
       setLoading(false);
       setUploadProgress(0);
+      // Reset the input value to allow re-uploading the same files
+      event.target.value = '';
     }
   };
 
@@ -290,7 +305,7 @@ const Files: React.FC = () => {
             className="inline-flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <CloudUpload className="w-4 h-4" />
-            <span>Upload File</span>
+            <span>Upload Files</span>
           </button>
         </div>
       )}
@@ -344,7 +359,7 @@ const Files: React.FC = () => {
               className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
             >
               <CloudUpload className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload File</span>
+              <span className="hidden sm:inline">Upload Files</span>
               <span className="sm:hidden">Upload</span>
             </button>
           </div>
@@ -578,13 +593,14 @@ const Files: React.FC = () => {
       {uploadDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4">Upload File</h2>
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Upload Files</h2>
             <div className="mb-4">
               <input
                 accept="*/*"
                 className="hidden"
                 id="file-upload"
                 type="file"
+                multiple
                 onChange={handleFileUpload}
                 disabled={loading}
               />
@@ -600,7 +616,7 @@ const Files: React.FC = () => {
                     <CloudUpload className="w-5 h-5 text-gray-400" />
                   )}
                   <span className="text-gray-600 text-sm sm:text-base">
-                    {loading ? 'Uploading...' : 'Choose File'}
+                    {loading ? 'Uploading...' : 'Choose Files'}
                   </span>
                 </div>
               </label>

@@ -321,16 +321,28 @@ const Chat: React.FC = () => {
                   // Handle source documents and add to sources array
                   
                   // Handle both single source string and array of sources
-                  let sourcesToAdd: string[] = [];
+                  let sourcesToAdd: any[] = [];
                   
                   if (Array.isArray(data.source)) {
                     // New format: source is an array
-                    sourcesToAdd = data.source.filter((source: string) => 
-                      source && !accumulatedSources.includes(source)
-                    );
+                    sourcesToAdd = data.source.filter((source: any) => {
+                      // Skip sources that are empty or just contain "Sources:"
+                      if (!source) return false;
+                      
+                      if (typeof source === 'string') {
+                        return source.trim() !== '' && source.trim() !== 'Sources:' && !accumulatedSources.includes(source);
+                      } else if (source && typeof source === 'object' && source.filename) {
+                        const filename = source.filename || '';
+                        return filename.trim() !== '' && filename.trim() !== 'Sources:' && !accumulatedSources.some((s: any) => 
+                          (typeof s === 'string' ? s : s.filename) === filename
+                        );
+                      }
+                      return false;
+                    });
                   } else if (data.source && typeof data.source === 'string') {
                     // Old format: source is a single string
-                    if (!accumulatedSources.includes(data.source)) {
+                    const sourceStr = data.source.trim();
+                    if (sourceStr !== '' && sourceStr !== 'Sources:' && !accumulatedSources.includes(data.source)) {
                       sourcesToAdd = [data.source];
                     }
                   }
@@ -953,20 +965,41 @@ const Chat: React.FC = () => {
                                 <p className="text-sm font-medium text-gray-700 mb-2">Sources:</p>
                                 <div className="space-y-1">
                                   {message.sources.map((source, index) => {
+                                    // Handle both old string format and new object format
+                                    let sourceFilename: string;
+                                    let sourcePage: number | null = null;
+                                    
+                                    if (typeof source === 'string') {
+                                      // Old format: source is a string
+                                      sourceFilename = source;
+                                    } else if (source && typeof source === 'object') {
+                                      // New format: source is an object with filename and page
+                                      sourceFilename = (source as any).filename || (source as any).toString();
+                                      sourcePage = (source as any).page || null;
+                                    } else {
+                                      // Fallback
+                                      sourceFilename = (source as any)?.toString() || 'Unknown source';
+                                    }
+                                    
                                     // Check if source is a URL
-                                    const isUrl = source.startsWith('http://') || source.startsWith('https://');
-                                    const displayText = isUrl ? new URL(source).hostname : (source.split('.')[0] ?? source);
+                                    const isUrl = sourceFilename.startsWith('http://') || sourceFilename.startsWith('https://');
+                                    const displayText = isUrl ? new URL(sourceFilename).hostname : (sourceFilename.split('.')[0] ?? sourceFilename);
                                     
                                     return (
                                       <div key={index} className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2">
-                                        <span className="text-sm text-gray-600 truncate flex-1">{displayText}</span>
+                                        <div className="flex flex-col flex-1">
+                                          <span className="text-sm text-gray-600 truncate">{displayText}</span>
+                                          {sourcePage && (
+                                            <span className="text-xs text-gray-500">Page {sourcePage}</span>
+                                          )}
+                                        </div>
                                         {isUrl ? (
                                           <a
-                                            href={source}
+                                            href={sourceFilename}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="ml-2 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                                            title={`Open ${source}`}
+                                            title={`Open ${sourceFilename}`}
                                           >
                                             <Link2Icon className="w-4 h-4" />
                                           </a>
@@ -975,12 +1008,12 @@ const Chat: React.FC = () => {
                                             onClick={() => {
                                               // Create a download link for the source document
                                               const link = document.createElement('a');
-                                              link.href = `https://bonnevillerag.omadligrouphq.com/download/${source}`;
+                                              link.href = `https://bonnevillerag.omadligrouphq.com/download/${sourceFilename}`;
                                               link.target = '_blank';
                                               link.click();
                                             }}
                                             className="ml-2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                                            title={`Download ${source}`}
+                                            title={`Download ${sourceFilename}`}
                                           >
                                             <LinkIcon className="w-4 h-4" />
                                           </button>

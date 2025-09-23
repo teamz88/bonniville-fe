@@ -112,6 +112,12 @@ export interface DashboardStats {
   error_rate: number;
   uptime_percentage: number;
   
+  // Token usage stats
+  total_tokens_used: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  token_messages_count: number;
+  
   // Revenue stats
   total_revenue: number;
   monthly_revenue: number;
@@ -310,6 +316,14 @@ export interface UserListItem {
   total_messages?: number;
   payment_history: any[];
   recent_activity: any[];
+  // Token usage fields
+  total_tokens_used?: number;
+  input_tokens_used?: number;
+  output_tokens_used?: number;
+  admin_tokens_used?: number;
+  chat_tokens_used?: number;
+  last_token_usage_date?: string | null;
+  message_count?: number;
   // Legacy fields for backward compatibility
   created_at?: string;
   last_activity?: string;
@@ -321,4 +335,29 @@ export interface UsersListStats {
   page: number;
   page_size: number;
   total_pages: number;
+}
+
+export interface TokenUsageByUser {
+  success: boolean;
+  data: {
+    user_id: number;
+    username: string;
+    email: string;
+    full_name: string;
+    total_tokens_used: number;
+    input_tokens_used: number;
+    output_tokens_used: number;
+    message_count: number;
+    avg_tokens_per_message: number;
+  }[];
+  total_users: number;
+  date_range: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+export interface DateRange {
+  start_date: string;
+  end_date: string;
 }

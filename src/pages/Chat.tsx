@@ -195,10 +195,25 @@ const Chat: React.FC = () => {
   };
 
   const streamResponse = async (messageText: string, conversationId: string) => {
+    let shouldRefreshHistory = false;
+    
     try {
       // Get auth token
       const token = localStorage.getItem('authToken');
       const baseURL = (import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api';
+      
+      // Prepare request body with user_info if user is available
+      const requestBody: any = {
+        message: messageText,
+        conversation_id: conversationId
+      };
+      
+      // Add user_info if user is authenticated
+      if (user) {
+        requestBody.user_info = {
+          email: user.email
+        };
+      }
       
       const response = await fetch(`${baseURL}/chat/stream/`, {
         method: 'POST',
@@ -206,10 +221,7 @@ const Chat: React.FC = () => {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
         },
-        body: JSON.stringify({
-          message: messageText,
-          conversation_id: conversationId
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (!response.ok) {
@@ -304,6 +316,11 @@ const Chat: React.FC = () => {
                     isHtmlContent = true;
                   }
                   
+                  // Handle token usage data if present
+                  let tokenUsage = undefined;
+                  if (data.token_usage) {
+                    tokenUsage = data.token_usage;
+                  }
                   
                   setMessages(prev => prev.map(msg => 
                     msg.id === tempAssistantMessage.id 
@@ -312,10 +329,17 @@ const Chat: React.FC = () => {
                           content: finalContent, 
                           isHtml: isHtmlContent,
                           sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
+                          token_usage: tokenUsage,
                           updated_at: new Date().toISOString() 
                         }
                       : msg
                   ));
+                  
+                  // Refresh conversation history if needed to get updated token counts
+                   if (shouldRefreshHistory) {
+                     await loadConversations();
+                   }
+                  
                   return;
                 } else if (data.type === 'source_document') {
                   // Handle source documents and add to sources array
@@ -961,45 +985,48 @@ const Chat: React.FC = () => {
                             
                             {/* Sources section for assistant messages */}
                             {message.message_type === 'assistant' && message.sources && message.sources.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
-                                <p className="text-sm font-medium text-gray-700 mb-2">Sources:</p>
+                              <div className="mt-3 pt-3 border-t border-primary-200">
+                                <p className="text-sm font-medium text-primary-700 mb-2">Sources:</p>
                                 <div className="space-y-1">
                                   {message.sources.map((source, index) => {
-                                    // Handle both old string format and new object format
-                                    let sourceFilename: string;
-                                    let sourcePage: number | null = null;
+                                    // Handle both string sources (legacy) and object sources (new format)
+                                    let sourceUrl: string;
+                                    let displayText: string;
+                                    let pageNumber: number | undefined;
                                     
                                     if (typeof source === 'string') {
-                                      // Old format: source is a string
-                                      sourceFilename = source;
-                                    } else if (source && typeof source === 'object') {
-                                      // New format: source is an object with filename and page
-                                      sourceFilename = (source as any).filename || (source as any).toString();
-                                      sourcePage = (source as any).page || null;
+                                      // Legacy string format
+                                      sourceUrl = source;
+                                      const isUrl = source.startsWith('http://') || source.startsWith('https://');
+                                      displayText = isUrl ? new URL(source).hostname : (source.split('.')[0] ?? source);
+                                      pageNumber = undefined;
                                     } else {
-                                      // Fallback
-                                      sourceFilename = (source as any)?.toString() || 'Unknown source';
+                                      // New object format with filename and page
+                                       sourceUrl = source.filename;
+                                       const isUrl = source.filename.startsWith('http://') || source.filename.startsWith('https://');
+                                       displayText = isUrl ? new URL(source.filename).hostname : (source.filename.split('.')[0] ?? source.filename);
+                                       pageNumber = source.page ?? undefined;
                                     }
                                     
-                                    // Check if source is a URL
-                                    const isUrl = sourceFilename.startsWith('http://') || sourceFilename.startsWith('https://');
-                                    const displayText = isUrl ? new URL(sourceFilename).hostname : (sourceFilename.split('.')[0] ?? sourceFilename);
+                                    const isUrl = sourceUrl.startsWith('http://') || sourceUrl.startsWith('https://');
                                     
                                     return (
-                                      <div key={index} className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2">
-                                        <div className="flex flex-col flex-1">
-                                          <span className="text-sm text-gray-600 truncate">{displayText}</span>
-                                          {sourcePage && (
-                                            <span className="text-xs text-gray-500">Page {sourcePage}</span>
+                                      <div key={index} className="flex items-center justify-between bg-gray-200 rounded-md px-3 py-2">
+                                        <div className="flex items-center gap-2 flex-1 truncate">
+                                          <span className="text-sm text-primary-600 truncate">{displayText}</span>
+                                          {pageNumber && (
+                                            <span className="text-xs text-white px-2 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--main-yellow)' }}>
+                                              Page {pageNumber}
+                                            </span>
                                           )}
                                         </div>
                                         {isUrl ? (
                                           <a
-                                            href={sourceFilename}
+                                            href={sourceUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="ml-2 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                                            title={`Open ${sourceFilename}`}
+                                            className="ml-2 p-1 text-primary-500 hover:text-primary-700 hover:bg-gray-100 rounded cursor-pointer transition-colors"
+                                            title={`Open ${sourceUrl}`}
                                           >
                                             <Link2Icon className="w-4 h-4" />
                                           </a>
@@ -1008,12 +1035,12 @@ const Chat: React.FC = () => {
                                             onClick={() => {
                                               // Create a download link for the source document
                                               const link = document.createElement('a');
-                                              link.href = `https://bonneragpage.omadligrouphq.com/files/download/${sourceFilename}`;
+                                              link.href = `https://bonneragpage.omadligrouphq.com/files/download/${sourceUrl}`;
                                               link.target = '_blank';
                                               link.click();
                                             }}
-                                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                                            title={`Download ${sourceFilename}`}
+                                            className="ml-2 p-1 text-primary-400 hover:text-primary-600 hover:bg-gray-100 rounded cursor-pointer transition-colors"
+                                            title={`Download ${sourceUrl}`}
                                           >
                                             <LinkIcon className="w-4 h-4" />
                                           </button>

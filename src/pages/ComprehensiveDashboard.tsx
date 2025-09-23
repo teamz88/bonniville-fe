@@ -30,8 +30,9 @@ import {
   ArcElement,
 } from 'chart.js';
 import dayjs from 'dayjs';
-import { useDashboardStats, useSubscriptionStats } from '../hooks/useAnalytics';
+import { useDashboardStats, useSubscriptionStats, useTokenUsageByUser } from '../hooks/useAnalytics';
 import { useAuth } from '../hooks/useAuth';
+import AdminTokenUsageCard from '../components/AdminTokenUsageCard';
 
 ChartJS.register(
   CategoryScale,
@@ -110,6 +111,12 @@ const ComprehensiveDashboard: React.FC = () => {
   // Fetch dashboard data with real-time updates
   const { data: dashboardStats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useDashboardStats(dateRange);
   const { data: subscriptionStats, isLoading: subscriptionLoading, refetch: refetchSubscriptions } = useSubscriptionStats(dateRange);
+  
+  // Fetch token usage data for system performance card
+  const { data: tokenUsageData, isLoading: tokenUsageLoading } = useTokenUsageByUser(dateRange);
+
+  // Calculate total tokens from token usage data
+  const totalTokensFromUsage = tokenUsageData?.data?.reduce((sum, user) => sum + user.total_tokens_used, 0) || 0;
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -140,61 +147,61 @@ const ComprehensiveDashboard: React.FC = () => {
     }
 
     // User Growth Chart Data
-    const userGrowthLabels = dashboardStats.user_growth_chart?.map(item => 
+    const userGrowthLabels = dashboardStats.user_growth_chart?.map(item =>
       dayjs(item.date).format('MMM DD')
     ) || [];
-    
-    const userGrowthData = {
-       labels: userGrowthLabels,
-       datasets: [
-         {
-           label: 'New Users',
-           data: dashboardStats.user_growth_chart?.map(item => item.new_users) || [],
-           backgroundColor: 'rgba(34, 197, 94, 0.8)',
-           borderColor: 'rgb(34, 197, 94)',
-           borderWidth: 1,
-         },
-       ],
-     };
 
-     const totalUsersData = {
-       labels: userGrowthLabels,
-       datasets: [
-         {
-           label: 'Total Users',
-           data: dashboardStats.user_growth_chart?.map(item => item.total_users) || [],
-           borderColor: 'rgb(59, 130, 246)',
-           backgroundColor: 'rgba(59, 130, 246, 0.1)',
-           tension: 0.4,
-           fill: true,
-         },
-       ],
-     };
+    const userGrowthData = {
+      labels: userGrowthLabels,
+      datasets: [
+        {
+          label: 'New Users',
+          data: dashboardStats.user_growth_chart?.map(item => item.new_users) || [],
+          backgroundColor: 'rgba(34, 197, 94, 0.8)',
+          borderColor: 'rgb(34, 197, 94)',
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const totalUsersData = {
+      labels: userGrowthLabels,
+      datasets: [
+        {
+          label: 'Total Users',
+          data: dashboardStats.user_growth_chart?.map(item => item.total_users) || [],
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    };
 
     // Activity Chart Data (Questions)
-     const activityLabels = dashboardStats.activity_chart?.map(item => 
-       dayjs(item.date).format('MMM DD')
-     ) || [];
-     
-     const activityData = {
-       labels: activityLabels,
-       datasets: [
-         {
-           label: 'Questions Asked',
-           data: dashboardStats.activity_chart?.map(item => item.questions) || [],
-           borderColor: 'rgb(59, 130, 246)',
-           backgroundColor: 'rgba(59, 130, 246, 0.1)',
-           tension: 0.4,
-           fill: true,
-         },
-       ],
-     };
-
-    // Revenue Chart Data (Site Visits replacement)
-    const revenueLabels = dashboardStats.revenue_chart?.map(item => 
+    const activityLabels = dashboardStats.activity_chart?.map(item =>
       dayjs(item.date).format('MMM DD')
     ) || [];
-    
+
+    const activityData = {
+      labels: activityLabels,
+      datasets: [
+        {
+          label: 'Questions Asked',
+          data: dashboardStats.activity_chart?.map(item => item.questions) || [],
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    };
+
+    // Revenue Chart Data (Site Visits replacement)
+    const revenueLabels = dashboardStats.revenue_chart?.map(item =>
+      dayjs(item.date).format('MMM DD')
+    ) || [];
+
     const revenueData = {
       labels: revenueLabels,
       datasets: [
@@ -349,11 +356,11 @@ const ComprehensiveDashboard: React.FC = () => {
         />
         <StatCard
           title="System Performance"
-          value={`${(dashboardStats?.uptime_percentage || 99.9).toFixed(1)}%`}
+          value={formatNumber(totalTokensFromUsage)}
           icon={<Activity className="w-6 h-6" />}
           color="#84CC16"
-          subtitle="Uptime"
-          loading={statsLoading}
+          subtitle="Total Tokens Used"
+          loading={statsLoading || tokenUsageLoading}
         />
         <StatCard
           title="Files Uploaded"
@@ -370,7 +377,10 @@ const ComprehensiveDashboard: React.FC = () => {
           loading={statsLoading}
         />
       </div>
-
+      {/* Token Usage Analytics */}
+      <div className="mb-6 sm:mb-8">
+        <AdminTokenUsageCard />
+      </div>
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
         {/* Daily Questions Chart */}

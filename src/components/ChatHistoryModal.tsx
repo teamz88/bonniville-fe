@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MessageCircle, User, Bot, Calendar, Clock, ArrowLeft, Copy, Check } from 'lucide-react';
+import { X, MessageCircle, User, Bot, Calendar, Clock, ArrowLeft, Copy, Check, ExternalLink, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -294,21 +294,69 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({ isOpen, onClose, us
                                   
                                   {/* Sources Display for Assistant Messages */}
                                   {message.sources && message.sources.length > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-gray-200">
-                                      <div className="text-xs font-medium text-gray-500 mb-2">Sources:</div>
+                                    <div className="mt-4 pt-3 border-t border-primary-200">
+                                      <div className="text-xs font-medium text-primary-500 mb-2">Sources:</div>
                                       <div className="space-y-1">
-                                        {message.sources.map((source, index) => (
-                                          <div key={index} className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
-                                            {typeof source === 'string' ? (
-                                              source
-                                            ) : (
-                                              <span>
-                                                {source.filename}
-                                                {source.page && ` (Page ${source.page})`}
-                                              </span>
-                                            )}
-                                          </div>
-                                        ))}
+                                        {message.sources.map((source, index) => {
+                                          // Handle both string sources (legacy) and object sources (new format)
+                                          let sourceUrl: string;
+                                          let displayText: string;
+                                          let pageNumber: number | undefined;
+                                          
+                                          if (typeof source === 'string') {
+                                            // Legacy string format
+                                            sourceUrl = source;
+                                            const isUrl = source.startsWith('http://') || source.startsWith('https://');
+                                            displayText = isUrl ? new URL(source).hostname : (source.split('.')[0] ?? source);
+                                            pageNumber = undefined;
+                                          } else {
+                                            // New object format with filename and page
+                                            sourceUrl = source.filename;
+                                            const isUrl = source.filename.startsWith('http://') || source.filename.startsWith('https://');
+                                            displayText = isUrl ? new URL(source.filename).hostname : (source.filename.split('.')[0] ?? source.filename);
+                                            pageNumber = source.page ?? undefined;
+                                          }
+                                          
+                                          const isUrl = sourceUrl.startsWith('http://') || sourceUrl.startsWith('https://');
+                                          
+                                          return (
+                                            <div key={index} className="flex items-center justify-between bg-primary-50 rounded-md px-3 py-2">
+                                              <div className="flex items-center gap-2 flex-1 truncate">
+                                                <span className="text-sm text-primary-600 truncate">{displayText}</span>
+                                                {pageNumber && (
+                                                  <span className="text-xs text-white px-2 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--main-yellow)' }}>
+                                                    Page {pageNumber}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              {isUrl ? (
+                                                <a
+                                                  href={sourceUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="ml-2 p-1 text-primary-500 hover:text-primary-700 hover:bg-primary-100 rounded transition-colors"
+                                                  title={`Open ${sourceUrl}`}
+                                                >
+                                                  <ExternalLink className="w-4 h-4" />
+                                                </a>
+                                              ) : (
+                                                <button
+                                                  onClick={() => {
+                                                    // Create a download link for the source document
+                                                    const link = document.createElement('a');
+                                                    link.href = `https://bonneragpage.omadligrouphq.com/files/download/${sourceUrl}`;
+                                                    link.target = '_blank';
+                                                    link.click();
+                                                  }}
+                                                  className="ml-2 p-1 text-primary-400 hover:text-primary-600 hover:bg-primary-100 rounded transition-colors"
+                                                  title={`Download ${sourceUrl}`}
+                                                >
+                                                  <Download className="w-4 h-4" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     </div>
                                   )}

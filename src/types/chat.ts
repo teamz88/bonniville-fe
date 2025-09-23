@@ -34,6 +34,11 @@ export interface ChatMessage {
   feedback?: 'positive' | 'negative' | null;
   metadata?: Record<string, any>;
   isHtml?: boolean;
+  token_usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 export interface MessageFeedback {

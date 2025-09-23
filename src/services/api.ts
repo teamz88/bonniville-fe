@@ -355,6 +355,10 @@ export const analyticsApi = {
     return api.get<UsersListStats>('/analytics/users-list-stats/', { params: regularUsersParams });
   },
 
+  // Token usage analytics
+  getTokenUsageByUser: (params?: { start_date?: string; end_date?: string }) => 
+    api.get('/analytics/token-usage-by-user/', { params }),
+
   // QA Management
   getQAData: (params?: {
     page?: number;
@@ -363,7 +367,7 @@ export const analyticsApi = {
     user?: string;
     date_from?: string;
     date_to?: string;
-  }) => api.get('/analytics/qa-data/', { params }),
+  }) => api.get('/analytics/qa-data/', { params })
 };
 
 

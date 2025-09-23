@@ -354,6 +354,16 @@ export const analyticsApi = {
     const regularUsersParams = { ...params, role: 'user' };
     return api.get<UsersListStats>('/analytics/users-list-stats/', { params: regularUsersParams });
   },
+
+  // QA Management
+  getQAData: (params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    user?: string;
+    date_from?: string;
+    date_to?: string;
+  }) => api.get('/analytics/qa-data/', { params }),
 };
 
 

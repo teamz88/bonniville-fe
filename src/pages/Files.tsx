@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   CloudUpload,
   Download,
@@ -16,11 +16,21 @@ import {
   X,
   Grid,
   List,
+  Shield,
+  Move,
 } from 'lucide-react';
 import { filesApi } from '../services/api';
-import { FileItem, FileStats, FileListResponse } from '../types/files';
+import { FileItem, FileStats, FileListResponse, FolderItem } from '../types/files';
+import { useAuth } from '../hooks/useAuth';
+import FolderTree, { FolderTreeRef } from '../components/FolderTree';
+import CreateFolderModal from '../components/CreateFolderModal';
+import MoveFolderModal from '../components/MoveFolderModal';
+import FolderBreadcrumbs from '../components/FolderBreadcrumbs';
 
 const Files: React.FC = () => {
+  const { user } = useAuth();
+  const folderTreeRef = useRef<FolderTreeRef>(null);
+  
   const [files, setFiles] = useState<FileItem[]>([]);
   const [stats, setStats] = useState<FileStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,16 +43,46 @@ const Files: React.FC = () => {
   const [menuFile, setMenuFile] = useState<FileItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
+  
+  // Folder-related state
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolder, setCurrentFolder] = useState<FolderItem | null>(null);
+  const [folderPath, setFolderPath] = useState<FolderItem[]>([]);
+  const [showFolderTree, setShowFolderTree] = useState(true);
+  const [createFolderModal, setCreateFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
+  const [parentFolderId, setParentFolderId] = useState<string | undefined>(undefined);
+  
+  // File upload state
+  const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
+  const [isDragOver, setIsDragOver] = useState(false);
+  
+  // File move state
+  const [draggedFile, setDraggedFile] = useState<FileItem | null>(null);
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
 
   useEffect(() => {
+    // Load saved folder from localStorage
+    const savedFolderId = localStorage.getItem('files-current-folder-id');
+    if (savedFolderId) {
+      setCurrentFolderId(savedFolderId);
+    }
+    
     loadFiles();
     loadStats();
-  }, []);
+  }, [currentFolderId]);
 
   const loadFiles = async () => {
     try {
       setLoading(true);
-      const response = await filesApi.getFiles();
+      const params: { page?: number; search?: string; category?: string; folder?: string } = {};
+      if (currentFolderId) {
+        params.folder = currentFolderId;
+      }
+      const response = await filesApi.getFiles(params);
       setFiles(response.data.results || response.data);
     } catch (error) {
       console.error('Failed to load files:', error);
@@ -62,51 +102,82 @@ const Files: React.FC = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setSelectedUploadFiles(files);
+    setUploadDialog(true);
+  };
+
+  const handleMultipleFileUpload = async () => {
+    if (selectedUploadFiles.length === 0) return;
 
     try {
       setLoading(true);
-      setUploadProgress(0);
-      
-      const totalFiles = files.length;
-      let completedFiles = 0;
-      
-      // Upload files sequentially to avoid overwhelming the server
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      const uploadPromises = selectedUploadFiles.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('name', file.name);
         
-        await filesApi.uploadFile(formData, {
+        // Add folder if a folder is currently selected
+        if (currentFolderId) {
+          formData.append('folder', currentFolderId);
+        }
+
+        return filesApi.uploadFile(formData, {
           onUploadProgress: (progressEvent) => {
-            const fileProgress = Math.round(
+            const progress = Math.round(
               (progressEvent.loaded * 100) / (progressEvent.total || 1)
             );
-            // Calculate overall progress
-            const overallProgress = Math.round(
-              ((completedFiles * 100) + fileProgress) / totalFiles
-            );
-            setUploadProgress(overallProgress);
+            setUploadingFiles(prev => ({
+              ...prev,
+              [file.name]: progress
+            }));
           }
         });
-        
-        completedFiles++;
-      }
+      });
+
+      await Promise.all(uploadPromises);
       
       setUploadDialog(false);
+      setSelectedUploadFiles([]);
+      setUploadingFiles({});
+      
+      // Refresh files for the current folder
       await loadFiles();
       await loadStats();
       setError(null);
+      
+      // If we're in a specific folder, also refresh the folder tree
+      if (currentFolderId && folderTreeRef.current) {
+        folderTreeRef.current.refresh();
+      }
     } catch (error) {
       console.error('Failed to upload files:', error);
       setError('Failed to upload files');
     } finally {
       setLoading(false);
-      setUploadProgress(0);
-      // Reset the input value to allow re-uploading the same files
-      event.target.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      setSelectedUploadFiles(files);
+      setUploadDialog(true);
     }
   };
 
@@ -163,6 +234,97 @@ const Files: React.FC = () => {
     } catch (error) {
       console.error('Failed to delete files:', error);
       setError('Failed to delete files');
+    }
+  };
+
+  // Folder management functions
+  const handleFolderSelect = (folderId: string | null) => {
+    setCurrentFolderId(folderId);
+    setSelectedFiles([]);
+    // Save to localStorage for persistence
+    if (folderId) {
+      localStorage.setItem('files-current-folder-id', folderId);
+    } else {
+      localStorage.removeItem('files-current-folder-id');
+    }
+  };
+
+  const handleCreateFolder = (parentId?: string) => {
+    setParentFolderId(parentId);
+    setEditingFolder(null);
+    setCreateFolderModal(true);
+  };
+
+  const handleEditFolder = (folder: FolderItem) => {
+    setEditingFolder(folder);
+    setParentFolderId(undefined);
+    setCreateFolderModal(true);
+  };
+
+  const handleDeleteFolder = async (folder: FolderItem) => {
+    if (window.confirm(`Are you sure you want to delete the folder "${folder.name}"?`)) {
+      try {
+        await filesApi.deleteFolder(folder.id);
+        await loadFiles();
+        if (currentFolderId === folder.id) {
+          setCurrentFolderId(null);
+        }
+        if (folderTreeRef.current) {
+          folderTreeRef.current.refresh();
+        }
+      } catch (error) {
+        console.error('Failed to delete folder:', error);
+        setError('Failed to delete folder');
+      }
+    }
+  };
+
+  const handleFolderModalSuccess = () => {
+    loadFiles();
+    // Refresh folder tree after creating/editing folder
+    folderTreeRef.current?.refresh();
+  };
+
+  const handleMoveFolder = (folder: FolderItem) => {
+    // TODO: Implement folder move functionality
+    console.log('Move folder:', folder);
+  };
+
+  const handleMoveFile = async (fileId: string, targetFolderId: string | null) => {
+    try {
+      await filesApi.moveFileToFolder(fileId, { folder_id: targetFolderId });
+      await loadFiles();
+      setShowMoveModal(false);
+      setFileToMove(null);
+      if (folderTreeRef.current) {
+        folderTreeRef.current.refresh();
+      }
+    } catch (error) {
+      console.error('Failed to move file:', error);
+      setError('Failed to move file');
+    }
+  };
+
+  const handleFileDragStart = (file: FileItem) => {
+    setDraggedFile(file);
+  };
+
+  const handleFileDragEnd = () => {
+    setDraggedFile(null);
+    setDragOverFolder(null);
+  };
+
+  const handleFolderDragOver = (folderId: string) => {
+    setDragOverFolder(folderId);
+  };
+
+  const handleFolderDragLeave = () => {
+    setDragOverFolder(null);
+  };
+
+  const handleFolderDrop = async (folderId: string) => {
+    if (draggedFile) {
+      await handleMoveFile(draggedFile.id, folderId);
     }
   };
 
@@ -230,59 +392,70 @@ const Files: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 pt-5">
-      {error && (
-        <div className="mx-3 sm:mx-6 bg-error-50 border border-error-200 rounded-lg p-4 mb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-error" />
-            <span className="text-error-800">{error}</span>
+    <div 
+      className={`w-full min-h-screen bg-gray-50 pt-5 ${isDragOver ? 'bg-primary-50' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="fixed inset-0 bg-primary-500 bg-opacity-20 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-white rounded-lg p-8 shadow-lg border-2 border-dashed border-primary-400">
+            <CloudUpload className="w-12 h-12 text-primary-500 mx-auto mb-4" />
+            <p className="text-lg font-semibold text-primary-700">Drop files here to upload</p>
+            {currentFolderId && (
+              <p className="text-sm text-primary-600 mt-2">Files will be uploaded to current folder</p>
+            )}
           </div>
-          <button
-            onClick={() => setError(null)}
-            className="text-error hover:text-error-800"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
+      
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        {error && (
+          <div className="mx-3 sm:mx-6 bg-error-50 border border-error-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-error" />
+              <span className="text-error-800">{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-error hover:text-error-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-      {/* File Stats */}
-      {stats && (
-        <div className="mx-3 sm:mx-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-lg sm:text-2xl font-bold text-primary mb-1">
-              {stats.total_files}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500">
-              Total Files
-            </p>
+        {/* Folder Tree at Top */}
+        {showFolderTree && (
+          <div className="mx-3 sm:mx-6 mb-4">
+            <FolderTree
+              ref={folderTreeRef}
+              onFolderSelect={handleFolderSelect}
+              selectedFolderId={currentFolderId}
+              onCreateFolder={handleCreateFolder}
+              onEditFolder={handleEditFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onMoveFolder={handleMoveFolder}
+              draggedFile={draggedFile?.id || null}
+              dragOverFolder={dragOverFolder}
+              onDragOverFolder={setDragOverFolder}
+              onDropFile={handleFolderDrop}
+            />
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-lg sm:text-2xl font-bold text-primary mb-1">
-              {formatFileSize(stats.total_size)}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500">
-              Total Size
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-lg sm:text-2xl font-bold text-primary mb-1">
-              {Object.keys(stats.files_by_category).length}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500">
-              Categories
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
-            <h3 className="text-lg sm:text-2xl font-bold text-primary mb-1">
-              {files.filter(f => f.is_shared).length}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500">
-              Shared Files
-            </p>
-          </div>
+        )}
+
+        {/* Folder Breadcrumbs */}
+        <div className="mx-3 sm:mx-6 mb-4">
+          <FolderBreadcrumbs
+            currentFolder={currentFolder}
+            folderPath={folderPath}
+            onNavigate={handleFolderSelect}
+          />
         </div>
-      )}
+
+
 
       {/* Loading State */}
       {loading && files.length === 0 && (
@@ -292,23 +465,6 @@ const Files: React.FC = () => {
         </div>
       )}
 
-      {/* Empty State */}
-      {!loading && (
-        <div className="mx-3 sm:mx-6 mb-5 bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <File className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No files yet</h3>
-          <p className="text-gray-600 mb-4">Upload your first file to get started</p>
-          <button
-            onClick={() => setUploadDialog(true)}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <CloudUpload className="w-4 h-4" />
-            <span>Upload Files</span>
-          </button>
-        </div>
-      )}
 
       {/* Toolbar */}
       <div className="mx-3 sm:mx-6 bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
@@ -356,7 +512,7 @@ const Files: React.FC = () => {
             )}
             <button
               onClick={() => setUploadDialog(true)}
-              className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+              className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
             >
               <CloudUpload className="w-4 h-4" />
               <span className="hidden sm:inline">Upload Files</span>
@@ -367,11 +523,27 @@ const Files: React.FC = () => {
       </div>
 
       {/* Files Display */}
+      {currentFolderId === null && (
+        <div className="mx-3 sm:mx-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+            <File className="w-5 h-5 mr-2" />
+            All files ({files.length})
+          </h3>
+        </div>
+      )}
+
+      {/* Files Display */}
       {viewMode === 'grid' ? (
         /* Grid View */
         <div className="mx-3 sm:mx-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {files.map((file) => (
-            <div key={file.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+            <div 
+              key={file.id} 
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow"
+              draggable
+              onDragStart={() => handleFileDragStart(file)}
+              onDragEnd={handleFileDragEnd}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-2">
                   <input
@@ -749,6 +921,30 @@ const Files: React.FC = () => {
           onClick={handleMenuClose}
         />
       )}
+
+      {/* Create Folder Modal */}
+      <CreateFolderModal
+        isOpen={createFolderModal}
+        onClose={() => setCreateFolderModal(false)}
+        onSuccess={handleFolderModalSuccess}
+        parentFolderId={parentFolderId}
+        editFolder={editingFolder || undefined}
+      />
+
+      {/* Move File to Folder Modal */}
+      <MoveFolderModal
+        isOpen={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        onMoveFile={async (folderId) => {
+          if (fileToMove) {
+            await handleMoveFile(fileToMove.id, folderId);
+            setShowMoveModal(false);
+            setFileToMove(null);
+          }
+        }}
+        fileName={fileToMove?.original_name || ''}
+      />
+      </div>
     </div>
   );
 };

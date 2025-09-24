@@ -462,7 +462,7 @@ export const filesApi = {
       ...config
     });
   },
-  getFiles: (params?: { page?: number; search?: string; category?: string }) =>
+  getFiles: (params?: { page?: number; search?: string; category?: string; folder?: string }) =>
     api.get('/files/', { params }),
   getFile: (id: string) => api.get(`/files/${id}/`),
   updateFile: (id: string, data: any) => api.patch(`/files/${id}/`, data),
@@ -495,6 +495,23 @@ export const filesApi = {
 
   // Admin analytics
   getAdminAnalytics: () => api.get('/files/admin/analytics/'),
+
+  // Folder operations
+  getFolders: (params?: { parent?: string }) => api.get('/files/folders/', { params }),
+  getFolderTree: () => api.get('/files/folders/tree/'),
+  createFolder: (data: { name: string; description?: string; color?: string; parent?: string }) => 
+    api.post('/files/folders/', data),
+  getFolder: (id: string) => api.get(`/files/folders/${id}/`),
+  updateFolder: (id: string, data: { name?: string; description?: string; color?: string }) => 
+    api.put(`/files/folders/${id}/`, data),
+  deleteFolder: (id: string) => api.delete(`/files/folders/${id}/`),
+  moveFolder: (id: string, data: { parent?: string }) =>
+    api.post(`/files/folders/${id}/move/`, data),
+  restoreFolder: (id: string) => api.post(`/files/folders/${id}/restore/`),
+  getFolderContents: (id: string) => api.get(`/files/folders/${id}/contents/`),
+  getFolderBreadcrumbs: (id: string) => api.get(`/files/folders/${id}/breadcrumbs/`),
+  moveFileToFolder: (fileId: string, data: { folder_id: string | null }) => 
+    api.patch(`/files/${fileId}/move/`, data),
 };
 
 export default api;

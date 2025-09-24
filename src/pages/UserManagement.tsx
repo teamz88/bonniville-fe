@@ -6,6 +6,7 @@ import { UserListItem } from '../types/analytics';
 import { authApi } from '../services/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import CompanyInfoDetailsModal from '../components/CompanyInfoDetailsModal';
+import UserProfileModal from '../components/UserProfileModal';
 
 const UserManagement: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -25,6 +26,10 @@ const UserManagement: React.FC = () => {
     show: false,
     user: null,
     companyInfo: null,
+  });
+  const [userProfileModal, setUserProfileModal] = useState<{ show: boolean; user: UserListItem | null }>({
+    show: false,
+    user: null,
   });
 
   const queryClient = useQueryClient();
@@ -185,7 +190,7 @@ const UserManagement: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                        {(usersData?.results || []).map((user: UserListItem) => (
-                         <tr key={user.id} className="hover:bg-gray-50">
+                         <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setUserProfileModal({ show: true, user })}>
                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10">
                              <div className="flex items-center">
                                <div className="min-w-0 flex-1">
@@ -205,7 +210,7 @@ const UserManagement: React.FC = () => {
                              {user.last_login ? dayjs(user.last_login).format('MMM DD, YYYY') : 'Never'}
                            </td>
                            <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                             <div className="flex items-center justify-center space-x-2">
+                             <div className="flex items-center justify-center space-x-2" onClick={(e) => e.stopPropagation()}>
                                {user.role !== 'admin' && (
                                  <button
                                    onClick={() => handleDeleteUser(user)}
@@ -384,6 +389,13 @@ const UserManagement: React.FC = () => {
         onClose={closeCompanyInfoModal}
         companyInfo={companyInfoModal.companyInfo}
         userName={companyInfoModal.user?.full_name || companyInfoModal.user?.username || ''}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={userProfileModal.show}
+        onClose={() => setUserProfileModal({ show: false, user: null })}
+        user={userProfileModal.user}
       />
     </div>
   );

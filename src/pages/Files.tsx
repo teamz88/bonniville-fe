@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CloudUpload,
   Download,
   Trash2,
   Share,
   MoreVertical,
-  Folder,
   File,
   Image,
   Video,
@@ -20,7 +19,7 @@ import {
   Move,
 } from 'lucide-react';
 import { filesApi } from '../services/api';
-import { FileItem, FileStats, FileListResponse, FolderItem } from '../types/files';
+import { FileItem, FileStats, FolderItem } from '../types/files';
 import { useAuth } from '../hooks/useAuth';
 import FolderTree, { FolderTreeRef } from '../components/FolderTree';
 import CreateFolderModal from '../components/CreateFolderModal';
@@ -29,7 +28,7 @@ import FolderBreadcrumbs from '../components/FolderBreadcrumbs';
 
 const Files: React.FC = () => {
   const { user } = useAuth();
-  const folderTreeRef = useRef<FolderTreeRef>(null);
+  const isAdmin = user?.role === 'admin';
   
   const [files, setFiles] = useState<FileItem[]>([]);
   const [stats, setStats] = useState<FileStats | null>(null);
@@ -44,25 +43,33 @@ const Files: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   
+  // Multiple file upload state
+  const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<{[key: string]: number}>({});
+  const [isDragOver, setIsDragOver] = useState(false);
+  
   // Folder-related state
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
+    // Load saved folder ID from localStorage
+    return localStorage.getItem('files-current-folder-id') || null;
+  });
   const [currentFolder, setCurrentFolder] = useState<FolderItem | null>(null);
   const [folderPath, setFolderPath] = useState<FolderItem[]>([]);
   const [showFolderTree, setShowFolderTree] = useState(true);
   const [createFolderModal, setCreateFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
-  const [parentFolderId, setParentFolderId] = useState<string | undefined>(undefined);
-  
-  // File upload state
-  const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
-  const [isDragOver, setIsDragOver] = useState(false);
-  
-  // File move state
-  const [draggedFile, setDraggedFile] = useState<FileItem | null>(null);
+  const [parentFolderId, setParentFolderId] = useState<string | undefined>();
+
+  // Drag and drop state
+  const [draggedFile, setDraggedFile] = useState<string | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+
+  // Move to folder modal state
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
+
+  // Ref for FolderTree component
+  const folderTreeRef = useRef<FolderTreeRef>(null);
 
   useEffect(() => {
     // Load saved folder from localStorage
@@ -221,6 +228,31 @@ const Files: React.FC = () => {
     }
   };
 
+  const adminDeleteFile = async (fileId: string) => {
+    try {
+      await filesApi.adminDeleteFile(fileId);
+      await loadFiles();
+      await loadStats();
+      setError(null);
+    } catch (error) {
+      console.error('Failed to permanently delete file:', error);
+      setError('Failed to permanently delete file');
+    }
+  };
+
+  const adminBulkDelete = async () => {
+    try {
+      await filesApi.adminBulkDelete(selectedFiles);
+      setSelectedFiles([]);
+      await loadFiles();
+      await loadStats();
+      setError(null);
+    } catch (error) {
+      console.error('Failed to permanently delete files:', error);
+      setError('Failed to permanently delete files');
+    }
+  };
+
   const bulkDelete = async () => {
     try {
       await filesApi.bulkAction({
@@ -280,9 +312,12 @@ const Files: React.FC = () => {
   };
 
   const handleFolderModalSuccess = () => {
-    loadFiles();
-    // Refresh folder tree after creating/editing folder
+    // Only refresh folder tree, don't reload files unless necessary
     folderTreeRef.current?.refresh();
+    // Only reload files if we're not in a specific folder or if we need to update the current view
+    if (!currentFolderId) {
+      loadFiles();
+    }
   };
 
   const handleMoveFolder = (folder: FolderItem) => {
@@ -306,7 +341,7 @@ const Files: React.FC = () => {
   };
 
   const handleFileDragStart = (file: FileItem) => {
-    setDraggedFile(file);
+    setDraggedFile(file.id);
   };
 
   const handleFileDragEnd = () => {
@@ -324,7 +359,7 @@ const Files: React.FC = () => {
 
   const handleFolderDrop = async (folderId: string) => {
     if (draggedFile) {
-      await handleMoveFile(draggedFile.id, folderId);
+      await handleMoveFile(draggedFile, folderId);
     }
   };
 
@@ -377,6 +412,12 @@ const Files: React.FC = () => {
   const handleMenuClose = () => {
     setAnchorEl(null);
     setMenuFile(null);
+  };
+
+  const handleMoveToFolder = (file: FileItem) => {
+    setFileToMove(file);
+    setShowMoveModal(true);
+    handleMenuClose();
   };
 
   const handleSelectFile = (fileId: string) => {
@@ -438,7 +479,7 @@ const Files: React.FC = () => {
               onEditFolder={handleEditFolder}
               onDeleteFolder={handleDeleteFolder}
               onMoveFolder={handleMoveFolder}
-              draggedFile={draggedFile?.id || null}
+              draggedFile={draggedFile || null}
               dragOverFolder={dragOverFolder}
               onDragOverFolder={setDragOverFolder}
               onDropFile={handleFolderDrop}
@@ -501,14 +542,26 @@ const Files: React.FC = () => {
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             {selectedFiles.length > 0 && (
-              <button
-                onClick={bulkDelete}
-                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-error text-white rounded-lg hover:bg-error-700 transition-colors text-sm"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Delete Selected ({selectedFiles.length})</span>
-                <span className="sm:hidden">Delete ({selectedFiles.length})</span>
-              </button>
+              <>
+                <button
+                  onClick={bulkDelete}
+                  className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-error text-white rounded-lg hover:bg-error-700 transition-colors text-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Delete Selected ({selectedFiles.length})</span>
+                  <span className="sm:hidden">Delete ({selectedFiles.length})</span>
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={adminBulkDelete}
+                    className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span className="hidden sm:inline">Permanently Delete ({selectedFiles.length})</span>
+                    <span className="sm:hidden">Perm Delete ({selectedFiles.length})</span>
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => setUploadDialog(true)}
@@ -777,43 +830,73 @@ const Files: React.FC = () => {
                 disabled={loading}
               />
               <label htmlFor="file-upload">
-                <div className={`flex items-center justify-center space-x-2 w-full px-4 py-3 sm:py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                <div className={`flex items-center justify-center space-x-2 w-full px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
                   loading 
                     ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
-                    : 'border-gray-300 hover:border-blue-400'
+                    : 'border-gray-300 hover:border-primary-400'
                 }`}>
                   {loading ? (
                     <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                   ) : (
-                    <CloudUpload className="w-5 h-5 text-gray-400" />
+                    <CloudUpload className="w-8 h-8 text-gray-400" />
                   )}
-                  <span className="text-gray-600 text-sm sm:text-base">
-                    {loading ? 'Uploading...' : 'Choose Files'}
-                  </span>
+                  <div className="text-center">
+                    <span className="text-gray-600 text-sm sm:text-base block">
+                      {loading ? 'Uploading...' : 'Choose Files or Drag & Drop'}
+                    </span>
+                    <span className="text-gray-400 text-xs">
+                      Select multiple files to upload
+                      {currentFolderId && ' to current folder'}
+                    </span>
+                  </div>
                 </div>
               </label>
-              {uploadProgress > 0 && (
+              
+              {/* Selected Files List */}
+              {selectedUploadFiles.length > 0 && (
                 <div className="mt-4">
                   <p className="text-sm text-gray-600 mb-2">
-                    Upload Progress: {uploadProgress}%
+                    Selected Files ({selectedUploadFiles.length}):
                   </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {selectedUploadFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                        <span className="truncate flex-1">{file.name}</span>
+                        <span className="text-gray-500 ml-2">
+                          {(file.size / 1024 / 1024).toFixed(1)} MB
+                        </span>
+                        {uploadingFiles[file.name] !== undefined && (
+                          <div className="ml-2 w-12 text-right">
+                            {uploadingFiles[file.name]}%
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
             <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
               <button
-                onClick={() => setUploadDialog(false)}
+                onClick={() => {
+                  setUploadDialog(false);
+                  setSelectedUploadFiles([]);
+                  setUploadingFiles({});
+                }}
                 disabled={loading}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
+              {selectedUploadFiles.length > 0 && (
+                <button
+                  onClick={handleMultipleFileUpload}
+                  disabled={loading}
+                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Uploading...' : `Upload ${selectedUploadFiles.length} File${selectedUploadFiles.length > 1 ? 's' : ''}`}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -903,6 +986,15 @@ const Files: React.FC = () => {
           </button>
           <button
             onClick={() => {
+              if (menuFile) handleMoveToFolder(menuFile);
+            }}
+            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <Move className="w-4 h-4 mr-2" />
+            Move to Folder
+          </button>
+          <button
+            onClick={() => {
               if (menuFile) deleteFile(menuFile.id);
               handleMenuClose();
             }}
@@ -911,6 +1003,18 @@ const Files: React.FC = () => {
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                if (menuFile) adminDeleteFile(menuFile.id);
+                handleMenuClose();
+              }}
+              className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Permanently Delete
+            </button>
+          )}
         </div>
       )}
       

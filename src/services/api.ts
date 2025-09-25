@@ -496,6 +496,10 @@ export const filesApi = {
   // Admin analytics
   getAdminAnalytics: () => api.get('/files/admin/analytics/'),
 
+  // Admin delete functions
+  adminDeleteFile: (id: string) => api.delete(`/files/admin/${id}/delete/`),
+  adminBulkDelete: (fileIds: string[]) => api.post('/files/admin/bulk-delete/', { file_ids: fileIds }),
+
   // Folder operations
   getFolders: (params?: { parent?: string }) => api.get('/files/folders/', { params }),
   getFolderTree: () => api.get('/files/folders/tree/'),

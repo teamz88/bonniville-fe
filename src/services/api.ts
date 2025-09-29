@@ -232,6 +232,10 @@ export const authApi = {
   checkClientInfoStatus: () => api.get('/auth/client-info/status/'),
   getUserClientInfo: (userId: number) => api.get(`/auth/users/${userId}/client-info/`),
   
+  // Role management
+  changeUserRole: (data: { user_id: number; role: string }) =>
+    api.post(`/auth/users/${data.user_id}/change-role/`, { role: data.role }),
+  
   // Generic post method for client info
   post: (url: string, data?: any) => api.post(url, data),
 };

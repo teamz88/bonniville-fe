@@ -1035,7 +1035,7 @@ const Chat: React.FC = () => {
                                             onClick={() => {
                                               // Create a download link for the source document
                                               const link = document.createElement('a');
-                                              link.href = `https://bonneragpage.omadligrouphq.com/files/download/${sourceUrl}`;
+                                              link.href = `${(import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api'}/chat/files/download/${sourceUrl}/`;
                                               link.target = '_blank';
                                               link.click();
                                             }}

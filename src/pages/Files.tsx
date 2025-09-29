@@ -24,6 +24,7 @@ import { useAuth } from '../hooks/useAuth';
 import FolderTree, { FolderTreeRef } from '../components/FolderTree';
 import CreateFolderModal from '../components/CreateFolderModal';
 import MoveFolderModal from '../components/MoveFolderModal';
+import DeleteFolderModal from '../components/DeleteFolderModal';
 import FolderBreadcrumbs from '../components/FolderBreadcrumbs';
 
 const Files: React.FC = () => {
@@ -67,6 +68,11 @@ const Files: React.FC = () => {
   // Move to folder modal state
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
+
+  // Delete folder modal state
+  const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
+  const [isDeletingFolder, setIsDeletingFolder] = useState(false);
 
   // Ref for FolderTree component
   const folderTreeRef = useRef<FolderTreeRef>(null);
@@ -294,20 +300,37 @@ const Files: React.FC = () => {
   };
 
   const handleDeleteFolder = async (folder: FolderItem) => {
-    if (window.confirm(`Are you sure you want to delete the folder "${folder.name}"?`)) {
-      try {
-        await filesApi.deleteFolder(folder.id);
-        await loadFiles();
-        if (currentFolderId === folder.id) {
-          setCurrentFolderId(null);
-        }
-        if (folderTreeRef.current) {
-          folderTreeRef.current.refresh();
-        }
-      } catch (error) {
-        console.error('Failed to delete folder:', error);
-        setError('Failed to delete folder');
+    setFolderToDelete(folder);
+    setShowDeleteFolderModal(true);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    
+    setIsDeletingFolder(true);
+    try {
+      await filesApi.deleteFolder(folderToDelete.id);
+      await loadFiles();
+      if (currentFolderId === folderToDelete.id) {
+        setCurrentFolderId(null);
       }
+      if (folderTreeRef.current) {
+        folderTreeRef.current.refresh();
+      }
+      setShowDeleteFolderModal(false);
+      setFolderToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+      setError('Failed to delete folder');
+    } finally {
+      setIsDeletingFolder(false);
+    }
+  };
+
+  const closeDeleteFolderModal = () => {
+    if (!isDeletingFolder) {
+      setShowDeleteFolderModal(false);
+      setFolderToDelete(null);
     }
   };
 
@@ -1047,6 +1070,15 @@ const Files: React.FC = () => {
           }
         }}
         fileName={fileToMove?.original_name || ''}
+      />
+
+      {/* Delete Folder Modal */}
+      <DeleteFolderModal
+        isOpen={showDeleteFolderModal}
+        onClose={closeDeleteFolderModal}
+        onConfirm={confirmDeleteFolder}
+        folder={folderToDelete}
+        isDeleting={isDeletingFolder}
       />
       </div>
     </div>

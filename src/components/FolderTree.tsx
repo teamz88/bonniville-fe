@@ -5,11 +5,8 @@ import {
   Folder,
   FolderOpen,
   Plus,
-  MoreVertical,
   Edit,
   Trash2,
-  Move,
-  FolderPlus,
 } from 'lucide-react';
 import { filesApi } from '../services/api';
 import { FolderItem } from '../types/files';
@@ -74,38 +71,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   selectedFolderId,
   expandedFolders,
 }) => {
-  const [showMenu, setShowMenu] = useState(false);
   const hasChildren = children.length > 0;
-
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowMenu(!showMenu);
-  };
-
-  const handleMenuAction = (action: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowMenu(false);
-    
-    switch (action) {
-      case 'create':
-        onCreateFolder(folder.id);
-        break;
-      case 'edit':
-        onEditFolder(folder);
-        break;
-      case 'delete':
-        onDeleteFolder(folder);
-        break;
-      case 'move':
-        onMoveFolder(folder);
-        break;
-    }
-  };
 
   return (
     <div>
       <div
-        className={`flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer rounded relative ${
+        className={`group flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer rounded relative ${
           isSelected ? 'bg-blue-50 border-r-2 border-blue-500' : ''
         } ${dragOverFolder === folder.id ? 'bg-blue-50 border-2 border-blue-300 border-dashed' : ''}`}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
@@ -172,46 +143,27 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           </div>
         </div>
 
-        <div className="relative">
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100">
           <button
-            onClick={handleMenuClick}
-            className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditFolder(folder);
+            }}
+            className="p-1 hover:bg-blue-100 rounded text-blue-600"
+            title="Rename folder"
           >
-            <MoreVertical className="w-4 h-4" />
+            <Edit className="w-3 h-3" />
           </button>
-          
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-[120px]">
-              <button
-                onClick={(e) => handleMenuAction('create', e)}
-                className="flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                <FolderPlus className="w-4 h-4 mr-2" />
-                New Folder
-              </button>
-              <button
-                onClick={(e) => handleMenuAction('edit', e)}
-                className="flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Rename
-              </button>
-              <button
-                onClick={(e) => handleMenuAction('move', e)}
-                className="flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                <Move className="w-4 h-4 mr-2" />
-                Move
-              </button>
-              <button
-                onClick={(e) => handleMenuAction('delete', e)}
-                className="flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100 text-red-600"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </button>
-            </div>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteFolder(folder);
+            }}
+            className="p-1 hover:bg-red-100 rounded text-red-600"
+            title="Delete folder"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
 

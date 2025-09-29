@@ -1273,7 +1273,7 @@ const Chat: React.FC = () => {
               <button
                 onClick={submitNegativeFeedback}
                 disabled={!feedbackReason.trim()}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Submit
               </button>

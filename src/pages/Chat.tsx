@@ -90,6 +90,8 @@ const Chat: React.FC = () => {
   const [feedbackReason, setFeedbackReason] = useState('');
   const [currentFeedbackMessage, setCurrentFeedbackMessage] = useState<ChatMessage | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<Set<string>>(new Set());
+  const [feedbackLoading, setFeedbackLoading] = useState<Set<string>>(new Set());
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { conversations, loadConversations } = useChatContext();
   const { user } = useAuth();
@@ -826,27 +828,47 @@ const Chat: React.FC = () => {
 
   // Feedback functions
   const handleThumbUp = async (message: ChatMessage) => {
-    if (feedbackSubmitted.has(message.id)) return;
+    if (feedbackSubmitted.has(message.id) || feedbackLoading.has(message.id)) return;
     
     const lastUserMessage = messages.filter(m => m.message_type === 'user').pop();
     if (!lastUserMessage) return;
 
+    // Set loading state
+    setFeedbackLoading(prev => new Set([...prev, message.id]));
+    setFeedbackMessage(null);
+
     try {
       await chatApi.submitRAGFeedback({
-        feedback_type: 'thumbs_up',
+        status: true, // Changed from feedback_type to status (boolean)
         question: lastUserMessage.content,
         answer: message.content,
         comment: 'Helpful response',
-        session_id: selectedConversation || undefined
+        session_id: selectedConversation || undefined,
+        chunk_ids: [] // Added chunk_ids as required by backend
       });
       setFeedbackSubmitted(prev => new Set([...prev, message.id]));
+      setFeedbackMessage({ type: 'success', text: 'Thank you for your feedback!' });
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } catch (error) {
       console.error('Failed to submit feedback:', error);
+      setFeedbackMessage({ type: 'error', text: 'Failed to submit feedback. Please try again.' });
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => setFeedbackMessage(null), 5000);
+    } finally {
+      // Remove loading state
+      setFeedbackLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(message.id);
+        return newSet;
+      });
     }
   };
 
   const handleThumbDown = (message: ChatMessage) => {
-    if (feedbackSubmitted.has(message.id)) return;
+    if (feedbackSubmitted.has(message.id) || feedbackLoading.has(message.id)) return;
     
     setCurrentFeedbackMessage(message);
     setFeedbackModalOpen(true);
@@ -858,20 +880,40 @@ const Chat: React.FC = () => {
     const lastUserMessage = messages.filter(m => m.message_type === 'user').pop();
     if (!lastUserMessage) return;
 
+    // Set loading state
+    setFeedbackLoading(prev => new Set([...prev, currentFeedbackMessage.id]));
+    setFeedbackMessage(null);
+
     try {
       await chatApi.submitRAGFeedback({
-        feedback_type: 'thumbs_down',
+        status: false, // Changed from feedback_type to status (boolean)
         question: lastUserMessage.content,
         answer: currentFeedbackMessage.content,
         comment: feedbackReason.trim(),
-        session_id: selectedConversation || undefined
+        session_id: selectedConversation || undefined,
+        chunk_ids: [] // Added chunk_ids as required by backend
       });
       setFeedbackSubmitted(prev => new Set([...prev, currentFeedbackMessage.id]));
       setFeedbackModalOpen(false);
       setFeedbackReason('');
       setCurrentFeedbackMessage(null);
+      setFeedbackMessage({ type: 'success', text: 'Thank you for your feedback!' });
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } catch (error) {
       console.error('Failed to submit feedback:', error);
+      setFeedbackMessage({ type: 'error', text: 'Failed to submit feedback. Please try again.' });
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => setFeedbackMessage(null), 5000);
+    } finally {
+      // Remove loading state
+      setFeedbackLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(currentFeedbackMessage.id);
+        return newSet;
+      });
     }
   };
 
@@ -889,6 +931,22 @@ const Chat: React.FC = () => {
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
+      )}
+
+      {/* Feedback Notification */}
+      {feedbackMessage && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 ${
+          feedbackMessage.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          {feedbackMessage.type === 'success' ? (
+            <Check className="h-5 w-5" />
+          ) : (
+            <X className="h-5 w-5" />
+          )}
+          {feedbackMessage.text}
+        </div>
       )}
 
       {/* Chat Area */}
@@ -1132,28 +1190,40 @@ const Chat: React.FC = () => {
                             {/* Feedback buttons */}
                             <button
                               onClick={() => handleThumbUp(message)}
-                              disabled={feedbackSubmitted.has(message.id)}
+                              disabled={feedbackSubmitted.has(message.id) || feedbackLoading.has(message.id)}
                               className={`p-1.5 rounded-md transition-colors ${
                                 feedbackSubmitted.has(message.id)
                                   ? 'text-success bg-success-50'
+                                  : feedbackLoading.has(message.id)
+                                  ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
                                   : 'text-gray-400 hover:text-success hover:bg-success-50'
                               } disabled:cursor-not-allowed`}
                               title="Helpful"
                             >
-                              <ThumbsUp className="w-4 h-4" />
+                              {feedbackLoading.has(message.id) ? (
+                                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <ThumbsUp className="w-4 h-4" />
+                              )}
                             </button>
                             
                             <button
                               onClick={() => handleThumbDown(message)}
-                              disabled={feedbackSubmitted.has(message.id)}
+                              disabled={feedbackSubmitted.has(message.id) || feedbackLoading.has(message.id)}
                               className={`p-1.5 rounded-md transition-colors ${
                                 feedbackSubmitted.has(message.id)
                                   ? 'text-error bg-error-50'
+                                  : feedbackLoading.has(message.id)
+                                  ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
                                   : 'text-gray-400 hover:text-error hover:bg-error-50'
                               } disabled:cursor-not-allowed`}
                               title="Not helpful"
                             >
-                              <ThumbsDown className="w-4 h-4" />
+                              {feedbackLoading.has(message.id) ? (
+                                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <ThumbsDown className="w-4 h-4" />
+                              )}
                             </button>
                           </>
                         )}
@@ -1272,10 +1342,17 @@ const Chat: React.FC = () => {
               </button>
               <button
                 onClick={submitNegativeFeedback}
-                disabled={!feedbackReason.trim()}
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                disabled={!feedbackReason.trim() || (currentFeedbackMessage ? feedbackLoading.has(currentFeedbackMessage.id) : false)}
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Submit
+                {currentFeedbackMessage && feedbackLoading.has(currentFeedbackMessage.id) ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit'
+                )}
               </button>
             </div>
           </div>

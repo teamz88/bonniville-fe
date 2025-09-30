@@ -407,12 +407,13 @@ export const chatApi = {
 
   // RAG Feedback APIs
   submitRAGFeedback: (data: {
-    feedback_type: 'thumbs_up' | 'thumbs_down';
+    status: boolean; // Changed from feedback_type to status (boolean)
     question: string;
     answer: string;
     comment?: string;
     session_id?: string;
     user_id?: string;
+    chunk_ids?: string[]; // Added chunk_ids as required by backend
   }) => api.post('/chat/feedback/', data),
 
   getRAGFeedbackAnalytics: (params?: {

@@ -34,12 +34,11 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({ isOpen, onClose, us
 
   const loadUserConversations = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      // Note: This assumes there's an API endpoint to get conversations by user
-      // You may need to modify the API to support filtering by user ID
-      const response = await chatApi.getConversations();
+      // Fetch conversations filtered by user_id
+      const response = await chatApi.getConversations({ user_id: user.id });
       setConversations(response.data.results || response.data);
     } catch (error) {
       console.error('Failed to load user conversations:', error);

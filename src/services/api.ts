@@ -379,7 +379,8 @@ export const analyticsApi = {
 // Chat API
 export const chatApi = {
   // Conversations
-  getConversations: () => api.get('/chat/conversations/'),
+  getConversations: (params?: { user_id?: number; archived?: boolean; pinned?: boolean; search?: string; ordering?: string }) =>
+    api.get('/chat/conversations/', { params }),
   createConversation: (data: { title: string }) => api.post('/chat/conversations/', data),
   getConversation: (id: string) => api.get(`/chat/conversations/${id}/`),
   updateConversation: (id: string, data: any) => api.patch(`/chat/conversations/${id}/`, data),

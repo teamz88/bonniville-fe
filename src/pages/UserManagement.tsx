@@ -118,6 +118,18 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  // Consistent date formatting like Bolt project
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   useEffect(() => {
     loadUsers();
   }, [page, search, filters]);
@@ -364,14 +376,10 @@ const UserManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tableUser.last_login ? (
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          <span>{dayjs(tableUser.last_login).fromNow()}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">Never</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatDateTime(tableUser.last_login)}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
@@ -604,12 +612,7 @@ const UserManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Login</label>
-                  <p className="text-gray-900">
-                    {userProfileModal.user.last_login
-                      ? dayjs(userProfileModal.user.last_login).format('MMMM D, YYYY HH:mm')
-                      : 'Never'
-                    }
-                  </p>
+                  <p className="text-gray-900">{formatDateTime(userProfileModal.user.last_login)}</p>
                 </div>
               </div>
             </div>

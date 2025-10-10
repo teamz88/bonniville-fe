@@ -1416,11 +1416,8 @@ const PDFViewerModal: React.FC<{
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
-  const [showScrollHint, setShowScrollHint] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfDocRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Load PDF.js library dynamically
@@ -1445,9 +1442,6 @@ const PDFViewerModal: React.FC<{
       if (pdfDocRef.current) {
         pdfDocRef.current.destroy();
       }
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
     };
   }, []);
 
@@ -1456,59 +1450,6 @@ const PDFViewerModal: React.FC<{
       renderPage(currentPage);
     }
   }, [currentPage, scale]);
-
-  // Auto-hide scroll hint after 3 seconds
-  useEffect(() => {
-    if (pdfLoaded && showScrollHint) {
-      const timer = setTimeout(() => {
-        setShowScrollHint(false);
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [pdfLoaded, showScrollHint]);
-
-  // Add scroll event listener for page navigation
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !pdfLoaded) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // Hide scroll hint on first scroll
-      if (showScrollHint) {
-        setShowScrollHint(false);
-      }
-
-      // Clear existing timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-
-      // Debounce scroll events
-      scrollTimeoutRef.current = setTimeout(() => {
-        if (e.deltaY > 0) {
-          // Scrolling down - next page
-          if (currentPage < numPages) {
-            setCurrentPage(currentPage + 1);
-          }
-        } else if (e.deltaY < 0) {
-          // Scrolling up - previous page
-          if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-          }
-        }
-      }, 150); // 150ms debounce
-    };
-
-    container.addEventListener('wheel', handleWheel);
-
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [currentPage, numPages, pdfLoaded, showScrollHint]);
 
   const loadPdf = async () => {
     try {
@@ -1527,22 +1468,24 @@ const PDFViewerModal: React.FC<{
       pdfDocRef.current = pdf;
       setNumPages(pdf.numPages);
 
-      // First render page 1 to show something quickly
-      await renderPage(1);
+      // Calculate target page
+      const targetPage = Math.min(Math.max(1, initialPage), pdf.numPages);
+
+      // First render page-1 (or page 1 if target is 1) to show context
+      const initialDisplayPage = targetPage > 1 ? targetPage - 1 : 1;
+      await renderPage(initialDisplayPage);
+      setCurrentPage(initialDisplayPage);
       setLoading(false);
 
       // Mark PDF as loaded
       setPdfLoaded(true);
 
-      // Then navigate to target page after PDF is fully loaded
-      const targetPage = Math.min(Math.max(1, initialPage), pdf.numPages);
-      if (targetPage !== 1) {
-        // Small delay to ensure first page is rendered
+      // Then navigate to actual target page after a brief moment
+      if (targetPage > 1 && targetPage !== initialDisplayPage) {
+        // Delay to show context page first, then auto-navigate to target
         setTimeout(() => {
           setCurrentPage(targetPage);
-        }, 100);
-      } else {
-        setCurrentPage(1);
+        }, 800);
       }
     } catch (err: any) {
       console.error('Error loading PDF:', err);
@@ -1680,10 +1623,7 @@ const PDFViewerModal: React.FC<{
         )}
 
         {/* PDF Canvas */}
-        <div
-          ref={containerRef}
-          className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center"
-        >
+        <div className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
           {loading && (
             <div className="text-center py-12">
               <div className="w-16 h-16 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -1710,22 +1650,10 @@ const PDFViewerModal: React.FC<{
           )}
 
           {!loading && !error && (
-            <div className="relative">
-              <canvas
-                ref={canvasRef}
-                className="border border-gray-300 shadow-lg bg-white max-w-full"
-              />
-              {pdfLoaded && showScrollHint && (
-                <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm shadow-lg transition-opacity duration-300 animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    <span>Use scroll to navigate pages</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            <canvas
+              ref={canvasRef}
+              className="border border-gray-300 shadow-lg bg-white max-w-full"
+            />
           )}
         </div>
       </div>

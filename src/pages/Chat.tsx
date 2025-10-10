@@ -32,6 +32,9 @@ import {
   EyeIcon,
   Link2Icon,
   LinkIcon,
+  FileText as FileTextIcon,
+  File,
+  FileIcon,
 } from 'lucide-react';
 import { chatApi } from '../services/api';
 import { Conversation, ChatMessage, ConversationListResponse, MessageListResponse, Folder } from '../types/chat';
@@ -92,6 +95,9 @@ const Chat: React.FC = () => {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<Set<string>>(new Set());
   const [feedbackLoading, setFeedbackLoading] = useState<Set<string>>(new Set());
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfPage, setPdfPage] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { conversations, loadConversations } = useChatContext();
   const { user } = useAuth();
@@ -923,6 +929,20 @@ const Chat: React.FC = () => {
     setCurrentFeedbackMessage(null);
   };
 
+  const openPdfViewer = (filename: string, page?: number) => {
+    const baseURL = (import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api';
+    const fullUrl = `${baseURL}/chat/files/download/${filename}/`;
+    setPdfUrl(fullUrl);
+    setPdfPage(page || 1);
+    setPdfModalOpen(true);
+  };
+
+  const closePdfModal = () => {
+    setPdfModalOpen(false);
+    setPdfUrl('');
+    setPdfPage(1);
+  };
+
   return (
     <div className="h-[calc(100vh-100px)] flex relative">
       {/* Mobile Overlay */}
@@ -1068,6 +1088,8 @@ const Chat: React.FC = () => {
                                     
                                     const isUrl = sourceUrl.startsWith('http://') || sourceUrl.startsWith('https://');
                                     
+                                    const isPdf = sourceUrl.toLowerCase().endsWith('.pdf');
+
                                     return (
                                       <div key={index} className="flex items-center justify-between bg-gray-200 rounded-md px-3 py-2">
                                         <div className="flex items-center gap-2 flex-1 truncate">
@@ -1078,31 +1100,42 @@ const Chat: React.FC = () => {
                                             </span>
                                           )}
                                         </div>
-                                        {isUrl ? (
-                                          <a
-                                            href={sourceUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="ml-2 p-1 text-primary-500 hover:text-primary-700 hover:bg-gray-100 rounded cursor-pointer transition-colors"
-                                            title={`Open ${sourceUrl}`}
-                                          >
-                                            <Link2Icon className="w-4 h-4" />
-                                          </a>
-                                        ) : (
-                                          <button
-                                            onClick={() => {
-                                              // Create a download link for the source document
-                                              const link = document.createElement('a');
-                                              link.href = `${(import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api'}/chat/files/download/${sourceUrl}/`;
-                                              link.target = '_blank';
-                                              link.click();
-                                            }}
-                                            className="ml-2 p-1 text-primary-400 hover:text-primary-600 hover:bg-gray-100 rounded cursor-pointer transition-colors"
-                                            title={`Download ${sourceUrl}`}
-                                          >
-                                            <LinkIcon className="w-4 h-4" />
-                                          </button>
-                                        )}
+                                        <div className="flex items-center gap-1">
+                                          {!isUrl && isPdf && (
+                                            <button
+                                              onClick={() => openPdfViewer(sourceUrl, pageNumber)}
+                                              className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded cursor-pointer transition-colors"
+                                              title="View PDF"
+                                            >
+                                              <FileTextIcon className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                          {isUrl ? (
+                                            <a
+                                              href={sourceUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="p-1 text-primary-500 hover:text-primary-700 hover:bg-gray-100 rounded cursor-pointer transition-colors"
+                                              title={`Open ${sourceUrl}`}
+                                            >
+                                              <Link2Icon className="w-4 h-4" />
+                                            </a>
+                                          ) : (
+                                            <button
+                                              onClick={() => {
+                                                // Create a download link for the source document
+                                                const link = document.createElement('a');
+                                                link.href = `${(import.meta as any).env.VITE_API_BASE_URL || 'https://bonbackend.omadligrouphq.com/api'}/chat/files/download/${sourceUrl}/`;
+                                                link.target = '_blank';
+                                                link.click();
+                                              }}
+                                              className="p-1 text-primary-400 hover:text-primary-600 hover:bg-gray-100 rounded cursor-pointer transition-colors"
+                                              title={`Download ${sourceUrl}`}
+                                            >
+                                              <LinkIcon className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   })}
@@ -1358,6 +1391,254 @@ const Chat: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* PDF Viewer Modal */}
+      {pdfModalOpen && (
+        <PDFViewerModal
+          pdfUrl={pdfUrl}
+          initialPage={pdfPage}
+          onClose={closePdfModal}
+        />
+      )}
+    </div>
+  );
+};
+
+// PDF Viewer Modal Component
+const PDFViewerModal: React.FC<{
+  pdfUrl: string;
+  initialPage: number;
+  onClose: () => void;
+}> = ({ pdfUrl, initialPage, onClose }) => {
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [numPages, setNumPages] = useState(0);
+  const [scale, setScale] = useState(1.2);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pdfDocRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Load PDF.js library dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+    script.async = true;
+    script.onload = () => {
+      // Set worker
+      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+      loadPdf();
+    };
+    script.onerror = () => {
+      setError('Failed to load PDF viewer library');
+      setLoading(false);
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pdfDocRef.current && currentPage) {
+      renderPage(currentPage);
+    }
+  }, [currentPage, scale]);
+
+  const loadPdf = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const pdfjsLib = (window as any).pdfjsLib;
+
+      const loadingTask = pdfjsLib.getDocument({
+        url: pdfUrl,
+        withCredentials: false,
+      });
+
+      const pdf = await loadingTask.promise;
+
+      pdfDocRef.current = pdf;
+      setNumPages(pdf.numPages);
+      setCurrentPage(Math.min(Math.max(1, initialPage), pdf.numPages));
+      setLoading(false);
+
+      // Render the initial page
+      await renderPage(Math.min(Math.max(1, initialPage), pdf.numPages));
+    } catch (err: any) {
+      console.error('Error loading PDF:', err);
+
+      // Handle specific error types
+      let errorMessage = 'Failed to load PDF';
+
+      if (err.message && err.message.includes('502')) {
+        errorMessage = 'File not found or server error. The PDF file may not exist or is temporarily unavailable.';
+      } else if (err.message && err.message.includes('404')) {
+        errorMessage = 'File not found. The PDF file does not exist.';
+      } else if (err.message && err.message.includes('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.status === 502 || err.status === 404) {
+        errorMessage = 'File not found or server error. The PDF file may not exist or is temporarily unavailable.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const renderPage = async (pageNum: number) => {
+    if (!pdfDocRef.current || !canvasRef.current) return;
+
+    try {
+      const page = await pdfDocRef.current.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      if (!context) return;
+
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+    } catch (err) {
+      console.error('Error rendering page:', err);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < numPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const page = parseInt(e.target.value, 10);
+    if (!isNaN(page) && page >= 1 && page <= numPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">PDF Viewer</h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Controls */}
+        {!error && (
+          <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={goToPrevPage}
+                disabled={currentPage <= 1 || loading}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Prev
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Page:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={numPages}
+                  value={currentPage}
+                  onChange={handlePageInputChange}
+                  disabled={loading}
+                  className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm text-gray-600">/ {numPages || '-'}</span>
+              </div>
+
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage >= numPages || loading}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Next
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Scale:</span>
+              <input
+                type="number"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value={scale}
+                onChange={(e) => setScale(parseFloat(e.target.value) || 1.0)}
+                disabled={loading}
+                className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* PDF Canvas */}
+        <div className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
+          {loading && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 text-lg">Loading PDF...</p>
+              <p className="text-gray-500 text-sm mt-2">Please wait while we load the document</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-12 max-w-md mx-auto">
+              <div className="mb-4">
+                <FileIcon className="w-20 h-20 mx-auto text-red-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-3">File Not Found</h3>
+              <p className="text-gray-600 mb-2">{error}</p>
+              <p className="text-sm text-gray-500 mt-4">The requested PDF file could not be loaded. It may have been deleted or moved.</p>
+              <button
+                onClick={onClose}
+                className="mt-6 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && (
+            <canvas
+              ref={canvasRef}
+              className="border border-gray-300 shadow-lg bg-white max-w-full"
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 };

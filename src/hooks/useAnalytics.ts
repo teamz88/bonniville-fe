@@ -262,3 +262,12 @@ export const useTokenUsageByUser = (dateRange?: { start_date?: string; end_date?
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 };
+
+export const useDailyTokenUsage = (dateRange?: { start_date?: string; end_date?: string }) => {
+  return useQuery({
+    queryKey: ['daily-token-usage', dateRange],
+    queryFn: () => analyticsApi.getDailyTokenUsage(dateRange),
+    select: (data) => data.data,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+};

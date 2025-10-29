@@ -360,8 +360,11 @@ export const analyticsApi = {
   },
 
   // Token usage analytics
-  getTokenUsageByUser: (params?: { start_date?: string; end_date?: string }) => 
+  getTokenUsageByUser: (params?: { start_date?: string; end_date?: string }) =>
     api.get('/analytics/token-usage-by-user/', { params }),
+
+  getDailyTokenUsage: (params?: { start_date?: string; end_date?: string }) =>
+    api.get('/analytics/daily-token-usage/', { params }),
 
   // QA Management
   getQAData: (params?: {

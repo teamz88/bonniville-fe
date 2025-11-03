@@ -1566,12 +1566,18 @@ const PDFViewerModal: React.FC<{
 
       if (!context) return;
 
+      // Set canvas dimensions
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
 
+      // Clear any previous transforms
+      context.setTransform(1, 0, 0, 1, 0, 0);
+
       const renderContext = {
         canvasContext: context,
-        viewport: viewport
+        viewport: viewport,
+        // Ensure proper rendering without transforms
+        transform: null
       };
 
       await page.render(renderContext).promise;
@@ -1696,6 +1702,7 @@ const PDFViewerModal: React.FC<{
             <canvas
               ref={canvasRef}
               className="border border-gray-300 shadow-lg bg-white max-w-full"
+              style={{ transform: 'none' }}
             />
           )}
         </div>

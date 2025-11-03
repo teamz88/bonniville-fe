@@ -351,46 +351,71 @@ const Chat: React.FC = () => {
                   return;
                 } else if (data.type === 'source_document') {
                   // Handle source documents and add to sources array
-                  
+                  console.log('📚 Received source_document event:', data);
+
+                  // Check if data.source array exists and has valid content
+                  // Backend already filtered, but we do final check here
+                  if (!data.source || !Array.isArray(data.source) || data.source.length === 0) {
+                    console.log('⚠️ Received source_document event but no valid sources in array');
+                    continue; // Skip this event
+                  }
+
                   // Handle both single source string and array of sources
                   let sourcesToAdd: any[] = [];
-                  
+
                   if (Array.isArray(data.source)) {
                     // New format: source is an array
                     sourcesToAdd = data.source.filter((source: any) => {
-                      // Skip sources that are empty or just contain "Sources:"
+                      // Skip sources that are empty or just contain "Sources:" or "Source:"
                       if (!source) return false;
-                      
+
                       if (typeof source === 'string') {
-                        return source.trim() !== '' && source.trim() !== 'Sources:' && !accumulatedSources.includes(source);
+                        const trimmed = source.trim().toLowerCase();
+                        return source.trim() !== '' &&
+                               trimmed !== 'sources:' &&
+                               trimmed !== 'source:' &&
+                               !accumulatedSources.includes(source);
                       } else if (source && typeof source === 'object' && source.filename) {
                         const filename = source.filename || '';
-                        return filename.trim() !== '' && filename.trim() !== 'Sources:' && !accumulatedSources.some((s: any) => 
-                          (typeof s === 'string' ? s : s.filename) === filename
-                        );
+                        const trimmedFilename = filename.trim().toLowerCase();
+                        return filename.trim() !== '' &&
+                               trimmedFilename !== 'sources:' &&
+                               trimmedFilename !== 'source:' &&
+                               !accumulatedSources.some((s: any) =>
+                                 (typeof s === 'string' ? s : s.filename) === filename
+                               );
                       }
                       return false;
                     });
                   } else if (data.source && typeof data.source === 'string') {
-                    // Old format: source is a single string
+                    // Old format: source is a single string (legacy support)
                     const sourceStr = data.source.trim();
-                    if (sourceStr !== '' && sourceStr !== 'Sources:' && !accumulatedSources.includes(data.source)) {
+                    const trimmedLower = sourceStr.toLowerCase();
+                    if (sourceStr !== '' &&
+                        trimmedLower !== 'sources:' &&
+                        trimmedLower !== 'source:' &&
+                        !accumulatedSources.includes(data.source)) {
                       sourcesToAdd = [data.source];
                     }
                   }
-                  
+
+                  console.log('✅ Sources to add:', sourcesToAdd);
+
                   if (sourcesToAdd.length > 0) {
                     accumulatedSources.push(...sourcesToAdd);
-                    
+                    console.log('📝 Accumulated sources:', accumulatedSources);
+
                     // Update the assistant message with sources
                     setMessages(prev => {
-                      const updatedMessages = prev.map(msg => 
-                        msg.id === tempAssistantMessage.id 
+                      const updatedMessages = prev.map(msg =>
+                        msg.id === tempAssistantMessage.id
                           ? { ...msg, sources: [...accumulatedSources], updated_at: new Date().toISOString() }
                           : msg
                       );
                       return updatedMessages;
                     });
+                  } else {
+                    console.log('⚠️ No valid sources to add after filtering');
                   }
                 } else if (data.type === 'error') {
                   // Handle error by updating the assistant message with error content
@@ -1062,11 +1087,28 @@ const Chat: React.FC = () => {
                             )}
                             
                             {/* Sources section for assistant messages */}
-                            {message.message_type === 'assistant' && message.sources && message.sources.length > 0 && (
+                            {message.message_type === 'assistant' && message.sources && message.sources.length > 0 && (() => {
+                              console.log('🎨 Rendering sources for message:', message.id, 'Sources:', message.sources);
+
+                              // Filter out invalid sources before rendering
+                              const validSources = message.sources.filter((source: any) => {
+                                if (typeof source === 'string') {
+                                  const trimmed = source.trim().toLowerCase();
+                                  return source.trim() !== '' && trimmed !== 'sources:' && trimmed !== 'source:';
+                                } else if (source && typeof source === 'object' && source.filename) {
+                                  const trimmed = source.filename.trim().toLowerCase();
+                                  return source.filename.trim() !== '' && trimmed !== 'sources:' && trimmed !== 'source:';
+                                }
+                                return false;
+                              });
+
+                              console.log('✨ Valid sources after filtering:', validSources);
+
+                              return validSources.length > 0 ? (
                               <div className="mt-3 pt-3 border-t border-primary-200">
                                 <p className="text-sm font-medium text-primary-700 mb-2">Sources:</p>
                                 <div className="space-y-1">
-                                  {message.sources.map((source, index) => {
+                                  {validSources.map((source, index) => {
                                     // Handle both string sources (legacy) and object sources (new format)
                                     let sourceUrl: string;
                                     let displayText: string;
@@ -1141,7 +1183,8 @@ const Chat: React.FC = () => {
                                   })}
                                 </div>
                               </div>
-                            )}
+                              ) : null;
+                            })()}
                             
                             <p
                               className={`text-sm mt-2 opacity-70 ${

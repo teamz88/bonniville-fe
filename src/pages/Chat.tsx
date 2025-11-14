@@ -1527,6 +1527,9 @@ const PDFViewerModal: React.FC<{
       setLoading(false);
       setPdfLoaded(true);
 
+      // Set scale to 1.1 after initial render
+      setScale(1.1);
+
       // Then navigate to actual target page after a brief moment
       if (targetPage > 1 && targetPage !== initialDisplayPage) {
         // Delay to show context page first, then auto-navigate to target

@@ -1455,7 +1455,7 @@ const PDFViewerModal: React.FC<{
 }> = ({ pdfUrl, initialPage, onClose }) => {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [numPages, setNumPages] = useState(0);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);

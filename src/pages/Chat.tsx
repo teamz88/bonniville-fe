@@ -1516,11 +1516,15 @@ const PDFViewerModal: React.FC<{
 
       // First render page-1 (or page 1 if target is 1) to show context
       const initialDisplayPage = targetPage > 1 ? targetPage - 1 : 1;
-      await renderPage(initialDisplayPage);
-      setCurrentPage(initialDisplayPage);
-      setLoading(false);
 
-      // Mark PDF as loaded
+      // Set current page first
+      setCurrentPage(initialDisplayPage);
+
+      // Render the page and wait for completion
+      await renderPage(initialDisplayPage);
+
+      // Only turn off loading after rendering is complete
+      setLoading(false);
       setPdfLoaded(true);
 
       // Then navigate to actual target page after a brief moment
@@ -1566,18 +1570,20 @@ const PDFViewerModal: React.FC<{
 
       if (!context) return;
 
-      // Set canvas dimensions
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
+      // Set canvas dimensions to match viewport
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
 
-      // Clear any previous transforms
-      context.setTransform(1, 0, 0, 1, 0, 0);
+      // Set canvas style dimensions to ensure it displays correctly
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+
+      // Clear canvas before rendering
+      context.clearRect(0, 0, canvas.width, canvas.height);
 
       const renderContext = {
         canvasContext: context,
-        viewport: viewport,
-        // Ensure proper rendering without transforms
-        transform: null
+        viewport: viewport
       };
 
       await page.render(renderContext).promise;
@@ -1672,39 +1678,42 @@ const PDFViewerModal: React.FC<{
         )}
 
         {/* PDF Canvas */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
-          {loading && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600 text-lg">Loading PDF...</p>
-              <p className="text-gray-500 text-sm mt-2">Please wait while we load the document</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="text-center py-12 max-w-md mx-auto">
-              <div className="mb-4">
-                <FileIcon className="w-20 h-20 mx-auto text-red-500" />
+        <div className="flex-1 overflow-auto p-4 bg-gray-100">
+          <div className="flex items-start justify-center min-h-full">
+            {loading && (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600 text-lg">Loading PDF...</p>
+                <p className="text-gray-500 text-sm mt-2">Please wait while we load the document</p>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">File Not Found</h3>
-              <p className="text-gray-600 mb-2">{error}</p>
-              <p className="text-sm text-gray-500 mt-4">The requested PDF file could not be loaded. It may have been deleted or moved.</p>
-              <button
-                onClick={onClose}
-                className="mt-6 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          )}
+            )}
 
-          {!loading && !error && (
-            <canvas
-              ref={canvasRef}
-              className="border border-gray-300 shadow-lg bg-white max-w-full"
-              style={{ transform: 'none' }}
-            />
-          )}
+            {error && (
+              <div className="text-center py-12 max-w-md mx-auto">
+                <div className="mb-4">
+                  <FileIcon className="w-20 h-20 mx-auto text-red-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">File Not Found</h3>
+                <p className="text-gray-600 mb-2">{error}</p>
+                <p className="text-sm text-gray-500 mt-4">The requested PDF file could not be loaded. It may have been deleted or moved.</p>
+                <button
+                  onClick={onClose}
+                  className="mt-6 px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && (
+              <div className="inline-block">
+                <canvas
+                  ref={canvasRef}
+                  className="border border-gray-300 shadow-lg bg-white"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
